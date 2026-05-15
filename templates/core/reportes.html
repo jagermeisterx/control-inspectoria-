@@ -1,0 +1,41 @@
+{% extends "core/base.html" %}
+{% block title %}Reportes — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-file-earmark-bar-graph"></i> Reportes</h1>
+</div>
+
+<div class="row g-4">
+    <!-- Reporte por alumno -->
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h5 class="fw-bold mb-3"><i class="bi bi-person"></i> Reporte por Alumno</h5>
+            <p class="text-muted small">Selecciona un alumno para ver su historial completo con opciones de descarga en PDF y Excel.</p>
+            <form method="get" id="form-alumno">
+                <select class="form-select mb-3" id="select-alumno" onchange="if(this.value) window.location.href='{% url 'reportes' %}' + 'alumno/' + this.value + '/'">
+                    <option value="">— Seleccionar alumno —</option>
+                    {% for al in alumnos %}
+                    <option value="{{ al.pk }}">{{ al.nombre_completo }} ({{ al.curso }})</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reporte por curso -->
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h5 class="fw-bold mb-3"><i class="bi bi-collection"></i> Reporte por Curso</h5>
+            <p class="text-muted small">Selecciona un curso para ver el resumen de todos sus alumnos con opciones de descarga.</p>
+            <div class="d-flex flex-wrap gap-2">
+                {% for curso in cursos %}
+                <a href="{% url 'reporte_curso' curso %}" class="btn btn-outline-primary btn-sm">{{ curso }}</a>
+                {% empty %}
+                <p class="text-muted small">No hay cursos con alumnos registrados.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

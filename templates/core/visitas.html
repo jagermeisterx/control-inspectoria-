@@ -1,0 +1,77 @@
+{% extends "core/base.html" %}
+{% block title %}Visitas — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-building"></i> Visitas de Apoderados</h1>
+</div>
+
+<div class="form-card">
+    <h6 class="fw-bold mb-3">➕ Nueva Visita</h6>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="form-label">Fecha</label>
+                {{ form.fecha }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Hora</label>
+                {{ form.hora }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Destino</label>
+                {{ form.destino }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Funcionario</label>
+                {{ form.funcionario }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Registrar</button>
+            </div>
+            <div class="col-md-12">
+                <label class="form-label">Observación</label>
+                {{ form.observacion }}
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
+        <input type="date" name="fecha_desde" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_desde }}">
+        <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_hasta }}">
+        <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+        {% if fecha_desde or fecha_hasta %}<a href="{% url 'visitas' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
+    <span class="text-muted small">{{ registros|length }} registros</span>
+</div>
+
+<div class="table-custom">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr><th>Fecha</th><th>Hora</th><th>Destino</th><th>Funcionario</th><th>Observación</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td>{{ r.fecha|date:"d/m" }}</td>
+                <td>{{ r.hora|time:"H:i" }}</td>
+                <td><span class="badge" style="background:var(--info)">{{ r.destino }}</span></td>
+                <td class="fw-semibold">{{ r.funcionario }}</td>
+                <td class="small">{{ r.observacion|truncatewords:10 }}</td>
+                <td>
+                    <form method="post" action="{% url 'eliminar_registro' 'visita' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-danger btn-delete">✕</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">No hay visitas registradas</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

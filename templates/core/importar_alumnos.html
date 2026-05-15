@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+{% block title %}Importar Alumnos — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-upload"></i> Importar Alumnos</h1>
+    <a href="{% url 'alumnos' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3">Subir archivo Excel (.xlsx)</h6>
+            <p class="text-muted small mb-3">
+                El archivo debe tener las siguientes columnas <strong>en este orden</strong>:
+            </p>
+            <div class="table-custom mb-3">
+                <table class="table mb-0">
+                    <thead>
+                        <tr><th>Col A</th><th>Col B</th><th>Col C</th><th>Col D</th><th>Col E</th><th>Col F</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>nombre</strong></td>
+                            <td><strong>apellido</strong></td>
+                            <td><strong>curso</strong></td>
+                            <td>rut <span class="text-muted">(opc.)</span></td>
+                            <td>apoderado <span class="text-muted">(opc.)</span></td>
+                            <td>teléfono <span class="text-muted">(opc.)</span></td>
+                        </tr>
+                        <tr class="text-muted small">
+                            <td>JUAN</td>
+                            <td>PÉREZ</td>
+                            <td>I° MEDIO</td>
+                            <td>12.345.678-9</td>
+                            <td>MARIA LÓPEZ</td>
+                            <td>912345678</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="alert alert-info small py-2">
+                <i class="bi bi-info-circle"></i>
+                La primera fila se ignora (encabezados). Si un alumno ya existe (mismo nombre + apellido + año), se actualizan sus datos.
+                <br>Cursos válidos: PRE-KINDER, KINDER, 1° BÁSICO ... 8° BÁSICO, I° MEDIO ... IV° MEDIO
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.archivo }}
+                <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-upload"></i> Importar</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

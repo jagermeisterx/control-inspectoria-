@@ -1,0 +1,112 @@
+{% extends "core/base.html" %}
+{% block title %}Reporte {{ alumno.nombre_completo }} — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-person"></i> {{ alumno.nombre_completo }}</h1>
+        <span class="text-muted small">{{ alumno.curso }} · RUT: {{ alumno.rut|default:"N/A" }} · Apoderado: {{ alumno.apoderado_nombre|default:"N/A" }} ({{ alumno.apoderado_telefono|default:"s/n" }})</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'exportar_pdf_alumno' alumno.pk %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-pdf"></i> PDF</a>
+        <a href="{% url 'exportar_excel_alumno' alumno.pk %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a href="{% url 'reportes' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-danger">{{ total_retiros }}</div>
+            <div class="stat-label">Retiros</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--warning)">{{ total_atrasos }}</div>
+            <div class="stat-label">Atrasos</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:#7c3aed">{{ total_uniformes }}</div>
+            <div class="stat-label">Uniformes</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--info)">{{ total_celulares }}</div>
+            <div class="stat-label">Celulares</div>
+        </div>
+    </div>
+</div>
+
+<!-- Retiros -->
+<div class="card-custom mb-3">
+    <h6 class="fw-bold"><i class="bi bi-door-open text-danger"></i> Retiros ({{ total_retiros }})</h6>
+    {% if retiros %}
+    <div class="table-custom mt-2">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Hora</th><th>Motivo</th><th>Retira</th><th>Observación</th></tr></thead>
+            <tbody>
+                {% for r in retiros %}
+                <tr><td>{{ r.fecha|date:"d/m/Y" }}</td><td>{{ r.hora|time:"H:i" }}</td><td>{{ r.motivo }}</td><td>{{ r.persona_retira }}</td><td class="small">{{ r.observacion|truncatewords:15 }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="text-muted small mt-2">Sin retiros registrados.</p>{% endif %}
+</div>
+
+<!-- Atrasos -->
+<div class="card-custom mb-3">
+    <h6 class="fw-bold"><i class="bi bi-clock-history" style="color:var(--warning)"></i> Atrasos ({{ total_atrasos }})</h6>
+    {% if atrasos %}
+    <div class="table-custom mt-2">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Lugar</th></tr></thead>
+            <tbody>
+                {% for a in atrasos %}
+                <tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>{{ a.hora|time:"H:i" }}</td><td><span class="badge badge-{{ a.tipo|lower }}">{{ a.tipo }}</span></td><td>{{ a.lugar }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="text-muted small mt-2">Sin atrasos registrados.</p>{% endif %}
+</div>
+
+<!-- Uniformes -->
+<div class="card-custom mb-3">
+    <h6 class="fw-bold"><i class="bi bi-person-badge" style="color:#7c3aed"></i> Uniformes ({{ total_uniformes }})</h6>
+    {% if uniformes %}
+    <div class="table-custom mt-2">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Falta</th><th>Comprado</th><th>Llamado</th><th>Determinación</th></tr></thead>
+            <tbody>
+                {% for u in uniformes %}
+                <tr><td>{{ u.fecha|date:"d/m/Y" }}</td><td>{{ u.falta }}</td><td>{% if u.tiene_uniforme_comprado %}Sí{% else %}No{% endif %}</td><td>{% if u.llamado %}Sí{% else %}No{% endif %}</td><td class="small">{{ u.determinacion }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="text-muted small mt-2">Sin registros de uniforme.</p>{% endif %}
+</div>
+
+<!-- Celulares -->
+<div class="card-custom mb-3">
+    <h6 class="fw-bold"><i class="bi bi-phone" style="color:var(--info)"></i> Celulares ({{ total_celulares }})</h6>
+    {% if celulares %}
+    <div class="table-custom mt-2">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Lugar</th><th>Retiro</th><th>Aviso</th></tr></thead>
+            <tbody>
+                {% for c in celulares %}
+                <tr><td>{{ c.fecha|date:"d/m/Y" }}</td><td>{{ c.lugar_entregado }}</td><td>{{ c.retiro }}</td><td>{% if c.aviso_apoderado %}Sí{% else %}No{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="text-muted small mt-2">Sin celulares requisados.</p>{% endif %}
+</div>
+{% endblock %}
