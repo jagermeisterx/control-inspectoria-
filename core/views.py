@@ -248,9 +248,12 @@ def importar_alumnos(request):
 # ── Reportes ──
 @login_required
 def reportes(request):
+    hoy = date.today()
     return render(request, "core/reportes.html", {
         "alumnos": Alumno.objects.filter(activo=True),
         "cursos": Alumno.objects.filter(activo=True).exclude(curso="").values_list("curso", flat=True).distinct().order_by("curso"),
+        "mes_actual": hoy.month,
+        "anio_actual": hoy.year,
     })
 
 
@@ -295,58 +298,9 @@ def reporte_curso(request, curso):
 # ── Exportar PDF ──
 @login_required
 def exportar_pdf_alumno(request, pk):
+    from .pdf_generator import generar_pdf_alumno
     alumno = get_object_or_404(Alumno, pk=pk)
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=20*mm, bottomMargin=15*mm)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph(f"Reporte de Inspectoría — {alumno.nombre_completo}", styles["Title"]))
-    elements.append(Paragraph(f"Curso: {alumno.curso} | RUT: {alumno.rut or 'N/A'}", styles["Normal"]))
-    elements.append(Paragraph(f"Apoderado: {alumno.apoderado_nombre or 'N/A'} | Tel: {alumno.apoderado_telefono or 'N/A'}", styles["Normal"]))
-    elements.append(Spacer(1, 10*mm))
-
-    def make_table(title, headers, rows):
-        elements.append(Paragraph(title, styles["Heading2"]))
-        if not rows:
-            elements.append(Paragraph("Sin registros.", styles["Normal"]))
-        else:
-            data = [headers] + rows
-            t = Table(data, repeatRows=1)
-            t.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4f46e5")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]))
-            elements.append(t)
-        elements.append(Spacer(1, 6*mm))
-
-    retiros = Retiro.objects.filter(alumno=alumno)
-    make_table(f"Retiros ({retiros.count()})",
-        ["Fecha", "Hora", "Motivo", "Retira", "Observación"],
-        [[str(r.fecha), str(r.hora)[:5], r.motivo, r.persona_retira, r.observacion[:50]] for r in retiros])
-
-    atrs = Atraso.objects.filter(alumno=alumno)
-    make_table(f"Atrasos ({atrs.count()})",
-        ["Fecha", "Hora", "Tipo", "Lugar"],
-        [[str(a.fecha), str(a.hora)[:5], a.tipo, a.lugar] for a in atrs])
-
-    unifs = ControlUniforme.objects.filter(alumno=alumno)
-    make_table(f"Uniformes ({unifs.count()})",
-        ["Fecha", "Falta", "Comprado", "Detalle"],
-        [[str(u.fecha), u.falta, "Sí" if u.tiene_uniforme_comprado else "No", u.detalle[:50]] for u in unifs])
-
-    cels = Celular.objects.filter(alumno=alumno)
-    make_table(f"Celulares ({cels.count()})",
-        ["Fecha", "Lugar", "Retiro", "Aviso"],
-        [[str(c.fecha), c.lugar_entregado, c.retiro, "Sí" if c.aviso_apoderado else "No"] for c in cels])
-
-    doc.build(elements)
-    buf.seek(0)
+    buf = generar_pdf_alumno(alumno)
     resp = HttpResponse(buf, content_type="application/pdf")
     resp["Content-Disposition"] = f'attachment; filename="reporte_{alumno.apellido}_{alumno.nombre}.pdf"'
     return resp
@@ -354,42 +308,29 @@ def exportar_pdf_alumno(request, pk):
 
 @login_required
 def exportar_pdf_curso(request, curso):
-    alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(letter), topMargin=15*mm, bottomMargin=10*mm)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph(f"Reporte de Inspectoría — {curso}", styles["Title"]))
-    elements.append(Paragraph(f"Generado: {date.today().strftime('%d/%m/%Y')}", styles["Normal"]))
-    elements.append(Spacer(1, 8*mm))
-
-    headers = ["Alumno/a", "Retiros", "Atrasos", "Uniformes", "Celulares", "Total"]
-    rows = []
-    for al in alumnos_curso:
-        r = al.retiros.count()
-        a = al.atrasos.count()
-        u = al.uniformes.count()
-        c = al.celulares.count()
-        rows.append([al.nombre_completo, str(r), str(a), str(u), str(c), str(r+a+u+c)])
-    rows.sort(key=lambda x: int(x[5]), reverse=True)
-
-    data = [headers] + rows
-    t = Table(data, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4f46e5")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
-        ("FONTSIZE", (0, 1), (-1, -1), 8),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-    ]))
-    elements.append(t)
-    doc.build(elements)
-    buf.seek(0)
+    from .pdf_generator import generar_pdf_curso
+    mes = request.GET.get("mes")
+    anio = request.GET.get("anio")
+    mes = int(mes) if mes else None
+    anio = int(anio) if anio else None
+    buf = generar_pdf_curso(curso, mes=mes, anio=anio)
     resp = HttpResponse(buf, content_type="application/pdf")
-    resp["Content-Disposition"] = f'attachment; filename="reporte_{curso.replace(" ","_")}.pdf"'
+    resp["Content-Disposition"] = f'attachment; filename="informe_{curso.replace(" ","_")}.pdf"'
+    return resp
+
+
+@login_required
+def exportar_pdf_todos_cursos(request):
+    from .pdf_generator import generar_pdf_todos_cursos
+    mes = request.GET.get("mes")
+    anio = request.GET.get("anio")
+    mes = int(mes) if mes else None
+    anio = int(anio) if anio else None
+    buf = generar_pdf_todos_cursos(mes=mes, anio=anio)
+    mes_label = mes or date.today().month
+    anio_label = anio or date.today().year
+    resp = HttpResponse(buf, content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="Informes_Todos_Cursos_{mes_label}_{anio_label}.pdf"'
     return resp
 
 

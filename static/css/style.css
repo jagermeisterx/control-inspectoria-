@@ -1,10 +1,10 @@
 :root {
-    --primary: #4338ca;
-    --primary-dark: #3730a3;
-    --primary-light: #e0e7ff;
+    --primary: #C8102E;
+    --primary-dark: #9B0000;
+    --primary-light: #fde8ec;
     --danger: #dc2626;
     --success: #16a34a;
-    --warning: #ea580c;
+    --warning: #C5A000;
     --info: #0284c7;
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;

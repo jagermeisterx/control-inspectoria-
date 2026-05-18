@@ -1,0 +1,716 @@
+"""
+Generador de PDFs profesionales para Inspectoría General
+Escuela Alemana Paillaco — Colores institucionales (rojo, negro, dorado)
+"""
+import io
+import os
+from datetime import date
+from collections import Counter
+
+from django.conf import settings
+from django.db.models import Count
+
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import mm, cm
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.platypus import (
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer,
+    Image, HRFlowable, PageBreak, KeepTogether,
+)
+from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate, Frame
+from reportlab.lib.utils import ImageReader
+
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular
+
+# ── Colores institucionales ──
+ROJO = colors.HexColor("#C8102E")
+ROJO_OSCURO = colors.HexColor("#9B0000")
+DORADO = colors.HexColor("#C5A000")
+NEGRO = colors.HexColor("#1A1A1A")
+GRIS = colors.HexColor("#666666")
+GRIS_CLARO = colors.HexColor("#F5F5F5")
+BLANCO = colors.white
+
+MESES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
+
+
+def _get_logo_path():
+    return os.path.join(settings.BASE_DIR, "static", "img", "logo.jpg")
+
+
+def _build_styles():
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        "TituloEscuela", parent=styles["Title"],
+        fontName="Helvetica-Bold", fontSize=18, textColor=ROJO,
+        alignment=TA_CENTER, spaceAfter=2*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "Subtitulo", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=12, textColor=NEGRO,
+        alignment=TA_CENTER, spaceAfter=4*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "SubtituloCurso", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=14, textColor=ROJO,
+        alignment=TA_CENTER, spaceAfter=2*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "Interno", parent=styles["Normal"],
+        fontName="Helvetica-Oblique", fontSize=9, textColor=GRIS,
+        alignment=TA_CENTER, spaceAfter=6*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "SeccionTitulo", parent=styles["Heading2"],
+        fontName="Helvetica-Bold", fontSize=12, textColor=BLANCO,
+        backColor=ROJO, leftIndent=4*mm, spaceBefore=6*mm, spaceAfter=3*mm,
+        borderPadding=(2*mm, 4*mm, 2*mm, 4*mm),
+    ))
+    styles.add(ParagraphStyle(
+        "ResumenTitulo", parent=styles["Heading2"],
+        fontName="Helvetica-Bold", fontSize=13, textColor=ROJO,
+        spaceBefore=4*mm, spaceAfter=3*mm,
+        borderWidth=0, borderColor=DORADO,
+    ))
+    styles.add(ParagraphStyle(
+        "SubSeccion", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=10, textColor=ROJO,
+        spaceBefore=4*mm, spaceAfter=2*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "Normal9", parent=styles["Normal"],
+        fontName="Helvetica", fontSize=9, textColor=NEGRO,
+    ))
+    styles.add(ParagraphStyle(
+        "Normal9Gray", parent=styles["Normal"],
+        fontName="Helvetica", fontSize=9, textColor=GRIS,
+    ))
+    styles.add(ParagraphStyle(
+        "AlertaInfo", parent=styles["Normal"],
+        fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#0056b3"),
+        leftIndent=6*mm, spaceBefore=2*mm,
+    ))
+    styles.add(ParagraphStyle(
+        "AlertaWarning", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=9, textColor=colors.HexColor("#cc6600"),
+        leftIndent=6*mm, spaceBefore=2*mm,
+    ))
+    return styles
+
+
+def _header_footer(canvas, doc, curso_label, mes_label):
+    """Dibuja encabezado y pie en cada página"""
+    canvas.saveState()
+    w, h = letter
+    logo_path = _get_logo_path()
+
+    # ── Encabezado ──
+    # Texto izquierda
+    canvas.setFont("Helvetica-Bold", 9)
+    canvas.setFillColor(ROJO)
+    canvas.drawString(20*mm, h - 12*mm, "ESCUELA ALEMANA PAILLACO")
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(GRIS)
+    canvas.drawString(20*mm, h - 16*mm, f"Inspectoría General · {curso_label} · {mes_label}")
+
+    # Logo derecha
+    if os.path.exists(logo_path):
+        canvas.drawImage(logo_path, w - 30*mm, h - 22*mm, width=18*mm, height=18*mm, preserveAspectRatio=True, mask='auto')
+
+    # ── Pie de página ──
+    # Línea dorada
+    canvas.setStrokeColor(DORADO)
+    canvas.setLineWidth(1)
+    canvas.line(20*mm, 14*mm, w - 20*mm, 14*mm)
+
+    # Texto pie
+    canvas.setFont("Helvetica-Oblique", 7)
+    canvas.setFillColor(ROJO)
+    pie = f"Informe {curso_label}  ·  Inspectoría General  ·  {mes_label}"
+    canvas.drawString(20*mm, 9*mm, pie)
+    canvas.setFont("Helvetica-Bold", 8)
+    canvas.drawRightString(w - 20*mm, 9*mm, f"Pág. {doc.page}")
+
+    canvas.restoreState()
+
+
+def _portada(elements, styles, curso_label, mes_label):
+    """Genera la portada del informe"""
+    elements.append(Spacer(1, 30*mm))
+
+    # Logo centrado grande
+    logo_path = _get_logo_path()
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=45*mm, height=45*mm))
+        elements.append(Spacer(1, 10*mm))
+
+    elements.append(Paragraph("ESCUELA ALEMANA PAILLACO", styles["TituloEscuela"]))
+    elements.append(Spacer(1, 8*mm))
+
+    # Línea dorada
+    elements.append(HRFlowable(width="60%", thickness=1, color=DORADO, spaceBefore=2*mm, spaceAfter=4*mm, hAlign="CENTER"))
+
+    elements.append(Paragraph("INSPECTORÍA GENERAL", styles["Subtitulo"]))
+    elements.append(Paragraph(f"Informe de Convivencia Escolar — {mes_label}", styles["Normal9Gray"]))
+    elements.append(Spacer(1, 2*mm))
+    elements.append(Paragraph(curso_label, styles["SubtituloCurso"]))
+    elements.append(Spacer(1, 15*mm))
+    elements.append(Paragraph("Documento de uso interno — Jefatura de Curso", styles["Interno"]))
+    elements.append(PageBreak())
+
+
+def _stat_table(data_pairs):
+    """Crea cuadro resumen tipo tarjetas con estadísticas"""
+    values = []
+    labels = []
+    for val, label in data_pairs:
+        values.append(Paragraph(f'<font size="22"><b>{val}</b></font>', ParagraphStyle("v", alignment=TA_CENTER, textColor=ROJO)))
+        labels.append(Paragraph(f'<font size="8">{label}</font>', ParagraphStyle("l", alignment=TA_CENTER, textColor=GRIS)))
+
+    col_w = 120 / len(data_pairs) * mm
+    t = Table([values, labels], colWidths=[col_w] * len(data_pairs))
+    t.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOX", (0, 0), (-1, -1), 0.5, ROJO),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
+        ("TOPPADDING", (0, 0), (-1, 0), 4*mm),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 2*mm),
+        ("TOPPADDING", (0, 1), (-1, 1), 1*mm),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 3*mm),
+        # Last column highlighted
+        ("BACKGROUND", (-1, 0), (-1, -1), ROJO),
+        ("TEXTCOLOR", (-1, 0), (-1, -1), BLANCO),
+    ]))
+    return t
+
+
+def _data_table(headers, rows, col_widths=None):
+    """Crea tabla de datos con estilo institucional"""
+    header_paras = [Paragraph(f'<b>{h}</b>', ParagraphStyle("th", fontSize=8, textColor=BLANCO, alignment=TA_CENTER)) for h in headers]
+    data = [header_paras]
+    for row in rows:
+        data.append([Paragraph(str(c), ParagraphStyle("td", fontSize=8, textColor=NEGRO)) for c in row])
+
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    style = [
+        ("BACKGROUND", (0, 0), (-1, 0), ROJO),
+        ("TEXTCOLOR", (0, 0), (-1, 0), BLANCO),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("FONTSIZE", (0, 1), (-1, -1), 8),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#CCCCCC")),
+        ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+    ]
+    # Alternate row colors
+    for i in range(1, len(data)):
+        if i % 2 == 0:
+            style.append(("BACKGROUND", (0, i), (-1, i), GRIS_CLARO))
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def _freq_table(title, data_list):
+    """Tabla de frecuencia por estudiante o por motivo"""
+    headers = [title, "Cantidad"]
+    rows = [[name, str(count)] for name, count in data_list]
+    t = _data_table(headers, rows, col_widths=[100*mm, 40*mm])
+    return t
+
+
+# ════════════════════════════════════════════
+#  PDF POR CURSO (formato informe completo)
+# ════════════════════════════════════════════
+
+def generar_pdf_curso(curso, mes=None, anio=None):
+    """Genera PDF profesional de informe por curso, replicando el formato institucional"""
+    hoy = date.today()
+    if mes is None:
+        mes = hoy.month
+    if anio is None:
+        anio = hoy.year
+
+    mes_label = f"{MESES[mes]} {anio}"
+    curso_label = curso
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        topMargin=25*mm, bottomMargin=20*mm,
+        leftMargin=20*mm, rightMargin=20*mm,
+    )
+
+    elements = []
+    styles = _build_styles()
+
+    # ── Portada ──
+    _portada(elements, styles, curso_label, mes_label)
+
+    # ── Datos del mes ──
+    alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
+    atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+    retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+    uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+    celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+
+    total_atrasos = atrasos.count()
+    atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()
+    atrasos_recreo = total_atrasos - atrasos_llegada
+    total_retiros = retiros.count()
+
+    # ── Resumen ──
+    elements.append(Paragraph(f"Resumen del Curso — {mes_label}", styles["ResumenTitulo"]))
+    elements.append(Spacer(1, 2*mm))
+
+    stat = _stat_table([
+        (total_atrasos, "Total Atrasos"),
+        (atrasos_llegada, "Llegada tardía"),
+        (atrasos_recreo, "Recreo/Pasillo"),
+        (total_retiros, "Total Retiros"),
+    ])
+    elements.append(stat)
+    elements.append(Spacer(1, 3*mm))
+
+    # Alertas inteligentes
+    motivos_salud = ["ENFERMO/A", "CONTROL MÉDICO", "ACC. ESCOLAR", "TERAPIA", "KINESIÓLOGO"]
+    retiros_salud = retiros.filter(motivo__in=motivos_salud).count()
+
+    if total_atrasos > 0:
+        top_atraso = atrasos.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n").first()
+        if top_atraso and top_atraso["n"] >= 5:
+            elements.append(Paragraph(
+                f'⚠ {top_atraso["alumno__nombre"]} {top_atraso["alumno__apellido"]} lidera los atrasos del curso con {top_atraso["n"]} registros.',
+                styles["AlertaWarning"]))
+
+    if total_atrasos > 30:
+        elements.append(Paragraph(
+            "⚠ El curso supera los 30 atrasos mensuales. Se recomienda intervención con apoderados.",
+            styles["AlertaWarning"]))
+
+    if total_retiros > 40:
+        elements.append(Paragraph(
+            f"⚠ Alto número de retiros ({total_retiros}). Revisar causas con Orientación.",
+            styles["AlertaWarning"]))
+
+    if retiros_salud > 0:
+        elements.append(Paragraph(
+            f"ℹ {retiros_salud} retiros asociados a salud. Informar a UTP para seguimiento académico.",
+            styles["AlertaInfo"]))
+
+    elements.append(Spacer(1, 4*mm))
+
+    # ── 1. Atrasos ──
+    elements.append(Paragraph("1.  Registro de Atrasos y Pases", styles["SeccionTitulo"]))
+    elements.append(Spacer(1, 2*mm))
+
+    if total_atrasos == 0:
+        elements.append(Paragraph(
+            f"No se registraron atrasos ni pases de recreo para este curso durante el mes de {MESES[mes].lower()} de {anio}.",
+            styles["Normal9"]))
+    else:
+        elements.append(Paragraph(
+            f"Se registraron {total_atrasos} atrasos y pases durante {MESES[mes].lower()}, de los cuales "
+            f"{atrasos_llegada} corresponden a llegadas tardías y {atrasos_recreo} a pases de recreo o pasillo.",
+            styles["Normal9"]))
+        elements.append(Spacer(1, 3*mm))
+
+        # Detalle
+        elements.append(Paragraph("Detalle de registros", styles["SubSeccion"]))
+        rows = []
+        for a in atrasos.select_related("alumno").order_by("fecha", "hora"):
+            rows.append([
+                a.fecha.strftime("%d/%m/%Y"),
+                a.alumno.nombre_completo,
+                a.hora.strftime("%H:%M") if a.hora else "",
+                a.tipo,
+                a.lugar or "",
+            ])
+        rows.append(["", "TOTAL", str(total_atrasos), f"{atrasos_llegada} llegadas", f"{atrasos_recreo} recreo"])
+        t = _data_table(["Fecha", "Alumno/a", "Hora", "Tipo", "Razón"], rows,
+                        col_widths=[22*mm, 50*mm, 18*mm, 22*mm, 40*mm])
+        elements.append(t)
+        elements.append(Spacer(1, 3*mm))
+
+        # Frecuencia por estudiante
+        elements.append(Paragraph("Frecuencia por estudiante", styles["SubSeccion"]))
+        freq = atrasos.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+        freq_data = [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]
+        elements.append(_freq_table("Alumno/a", freq_data))
+
+    elements.append(Spacer(1, 4*mm))
+
+    # ── 2. Retiros ──
+    elements.append(Paragraph("2.  Registro de Retiros Anticipados", styles["SeccionTitulo"]))
+    elements.append(Spacer(1, 2*mm))
+
+    if total_retiros == 0:
+        elements.append(Paragraph(
+            f"No se registraron retiros anticipados durante {MESES[mes].lower()}.",
+            styles["Normal9"]))
+    else:
+        elements.append(Paragraph(
+            f"Se registraron {total_retiros} retiros anticipados durante {MESES[mes].lower()}.",
+            styles["Normal9"]))
+        elements.append(Spacer(1, 3*mm))
+
+        elements.append(Paragraph("Detalle de registros", styles["SubSeccion"]))
+        rows = []
+        for r in retiros.select_related("alumno").order_by("fecha", "hora"):
+            rows.append([
+                r.fecha.strftime("%d/%m/%Y"),
+                r.alumno.nombre_completo,
+                r.hora.strftime("%H:%M") if r.hora else "",
+                r.motivo,
+            ])
+        rows.append(["", "TOTAL", "", f"{total_retiros}  retiros"])
+        t = _data_table(["Fecha", "Alumno/a", "Hora", "Motivo"], rows,
+                        col_widths=[24*mm, 55*mm, 20*mm, 50*mm])
+        elements.append(t)
+        elements.append(Spacer(1, 3*mm))
+
+        # Resumen por motivo
+        elements.append(Paragraph("Resumen por motivo", styles["SubSeccion"]))
+        mot_freq = retiros.values("motivo").annotate(n=Count("id")).order_by("-n")
+        mot_data = [(m["motivo"], m["n"]) for m in mot_freq]
+        mot_data.append(("TOTAL", total_retiros))
+        elements.append(_freq_table("Motivo", mot_data))
+        elements.append(Spacer(1, 3*mm))
+
+        # Frecuencia por estudiante
+        elements.append(Paragraph("Frecuencia por estudiante", styles["SubSeccion"]))
+        freq = retiros.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+        freq_data = [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]
+        elements.append(_freq_table("Alumno/a", freq_data))
+
+    # ── 3. Uniformes (si hay) ──
+    total_uniformes = uniformes.count()
+    if total_uniformes > 0:
+        elements.append(Spacer(1, 4*mm))
+        elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph(
+            f"Se registraron {total_uniformes} situación(es) de uniforme incompleto en el mes de {MESES[mes].lower()}.",
+            styles["Normal9"]))
+        elements.append(Spacer(1, 3*mm))
+
+        rows = []
+        for u in uniformes.select_related("alumno").order_by("fecha"):
+            rows.append([
+                u.fecha.strftime("%d/%m/%Y"),
+                u.alumno.nombre_completo,
+                u.falta,
+                u.determinacion or "-",
+            ])
+        t = _data_table(["Fecha", "Alumno/a", "Falta", "Determinación"], rows,
+                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm])
+        elements.append(t)
+
+    # ── 4. Celulares (si hay) ──
+    total_celulares = celulares.count()
+    if total_celulares > 0:
+        elements.append(Spacer(1, 4*mm))
+        sec_num = 4 if total_uniformes > 0 else 3
+        elements.append(Paragraph(f"{sec_num}.  Retención de Celulares", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph(
+            f"Se registraron {total_celulares} caso(s) de retención de celular durante {MESES[mes].lower()}.",
+            styles["Normal9"]))
+        elements.append(Spacer(1, 3*mm))
+
+        rows = []
+        for c in celulares.select_related("alumno").order_by("fecha"):
+            rows.append([
+                c.fecha.strftime("%d/%m/%Y"),
+                c.alumno.nombre_completo,
+                c.lugar_entregado,
+                c.retiro,
+            ])
+        t = _data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro"], rows,
+                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm])
+        elements.append(t)
+
+    # ── Build ──
+    def on_page(canvas, doc):
+        _header_footer(canvas, doc, curso_label, mes_label)
+
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+    return buf
+
+
+# ════════════════════════════════════════════
+#  PDF POR ALUMNO (con resumen + detalle)
+# ════════════════════════════════════════════
+
+def generar_pdf_alumno(alumno):
+    """Genera PDF profesional del historial de un alumno"""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        topMargin=25*mm, bottomMargin=20*mm,
+        leftMargin=20*mm, rightMargin=20*mm,
+    )
+
+    elements = []
+    styles = _build_styles()
+    curso_label = alumno.curso or "Sin curso"
+    mes_label = date.today().strftime("%B %Y").capitalize()
+
+    # ── Encabezado ──
+    elements.append(Spacer(1, 5*mm))
+
+    logo_path = _get_logo_path()
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=25*mm, height=25*mm))
+        elements.append(Spacer(1, 4*mm))
+
+    elements.append(Paragraph("ESCUELA ALEMANA PAILLACO", styles["TituloEscuela"]))
+    elements.append(HRFlowable(width="60%", thickness=1, color=DORADO, spaceBefore=2*mm, spaceAfter=4*mm, hAlign="CENTER"))
+    elements.append(Paragraph("INSPECTORÍA GENERAL", styles["Subtitulo"]))
+    elements.append(Paragraph(f"Reporte Individual — {alumno.nombre_completo}", styles["SubtituloCurso"]))
+    elements.append(Spacer(1, 4*mm))
+
+    # ── Datos del alumno ──
+    info_data = [
+        ["Alumno/a:", alumno.nombre_completo, "Curso:", alumno.curso],
+        ["RUT:", alumno.rut or "N/A", "Apoderado:", alumno.apoderado_nombre or "N/A"],
+        ["Teléfono:", alumno.apoderado_telefono or "N/A", "Generado:", date.today().strftime("%d/%m/%Y")],
+    ]
+    info_t = Table(info_data, colWidths=[22*mm, 55*mm, 22*mm, 55*mm])
+    info_t.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+        ("TEXTCOLOR", (0, 0), (0, -1), GRIS),
+        ("TEXTCOLOR", (2, 0), (2, -1), GRIS),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+    ]))
+    elements.append(info_t)
+    elements.append(Spacer(1, 4*mm))
+
+    # ── Resumen (cuadro) ──
+    retiros_q = Retiro.objects.filter(alumno=alumno)
+    atrasos_q = Atraso.objects.filter(alumno=alumno)
+    uniformes_q = ControlUniforme.objects.filter(alumno=alumno)
+    celulares_q = Celular.objects.filter(alumno=alumno)
+
+    elements.append(Paragraph("Resumen General", styles["ResumenTitulo"]))
+    stat = _stat_table([
+        (retiros_q.count(), "Retiros"),
+        (atrasos_q.count(), "Atrasos"),
+        (uniformes_q.count(), "Uniformes"),
+        (celulares_q.count(), "Celulares"),
+    ])
+    elements.append(stat)
+    elements.append(Spacer(1, 4*mm))
+
+    # ── Retiros ──
+    if retiros_q.exists():
+        elements.append(Paragraph("Retiros Anticipados", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        rows = []
+        for r in retiros_q.order_by("-fecha"):
+            rows.append([
+                r.fecha.strftime("%d/%m/%Y"),
+                r.hora.strftime("%H:%M") if r.hora else "",
+                r.motivo,
+                r.persona_retira,
+                (r.observacion or "")[:40],
+            ])
+        t = _data_table(["Fecha", "Hora", "Motivo", "Retira", "Obs."], rows,
+                        col_widths=[22*mm, 16*mm, 30*mm, 40*mm, 42*mm])
+        elements.append(t)
+
+    # ── Atrasos ──
+    if atrasos_q.exists():
+        elements.append(Spacer(1, 3*mm))
+        elements.append(Paragraph("Atrasos y Pases", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        rows = []
+        for a in atrasos_q.order_by("-fecha"):
+            rows.append([
+                a.fecha.strftime("%d/%m/%Y"),
+                a.hora.strftime("%H:%M") if a.hora else "",
+                a.tipo,
+                a.lugar or "",
+            ])
+        t = _data_table(["Fecha", "Hora", "Tipo", "Lugar/Razón"], rows,
+                        col_widths=[25*mm, 20*mm, 25*mm, 80*mm])
+        elements.append(t)
+
+    # ── Uniformes ──
+    if uniformes_q.exists():
+        elements.append(Spacer(1, 3*mm))
+        elements.append(Paragraph("Control de Uniformes", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        rows = []
+        for u in uniformes_q.order_by("-fecha"):
+            rows.append([
+                u.fecha.strftime("%d/%m/%Y"),
+                u.falta,
+                "Sí" if u.tiene_uniforme_comprado else "No",
+                u.determinacion or "-",
+            ])
+        t = _data_table(["Fecha", "Falta", "Comprado", "Determinación"], rows,
+                        col_widths=[25*mm, 40*mm, 20*mm, 65*mm])
+        elements.append(t)
+
+    # ── Celulares ──
+    if celulares_q.exists():
+        elements.append(Spacer(1, 3*mm))
+        elements.append(Paragraph("Retención de Celulares", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        rows = []
+        for c in celulares_q.order_by("-fecha"):
+            rows.append([
+                c.fecha.strftime("%d/%m/%Y"),
+                c.lugar_entregado,
+                c.retiro,
+                "Sí" if c.aviso_apoderado else "No",
+            ])
+        t = _data_table(["Fecha", "Lugar", "Retiro", "Aviso"], rows,
+                        col_widths=[25*mm, 45*mm, 40*mm, 40*mm])
+        elements.append(t)
+
+    # Sin registros
+    if not any([retiros_q.exists(), atrasos_q.exists(), uniformes_q.exists(), celulares_q.exists()]):
+        elements.append(Spacer(1, 10*mm))
+        elements.append(Paragraph("No se encontraron registros para este alumno.", styles["Normal9Gray"]))
+
+    # ── Build ──
+    def on_page(canvas, doc):
+        _header_footer(canvas, doc, curso_label, f"Reporte Individual")
+
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+    return buf
+
+
+# ════════════════════════════════════════════
+#  PDF TODOS LOS CURSOS (un informe por curso, concatenados)
+# ════════════════════════════════════════════
+
+def generar_pdf_todos_cursos(mes=None, anio=None):
+    """Genera un PDF con informes de todos los cursos concatenados"""
+    hoy = date.today()
+    if mes is None:
+        mes = hoy.month
+    if anio is None:
+        anio = hoy.year
+
+    mes_label = f"{MESES[mes]} {anio}"
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        topMargin=25*mm, bottomMargin=20*mm,
+        leftMargin=20*mm, rightMargin=20*mm,
+    )
+
+    elements = []
+    styles = _build_styles()
+
+    cursos = Alumno.objects.filter(activo=True).exclude(curso="").values_list("curso", flat=True).distinct().order_by("curso")
+
+    for i, curso in enumerate(cursos):
+        # Portada por curso
+        _portada(elements, styles, curso, mes_label)
+
+        # Datos
+        atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+
+        total_atrasos = atrasos.count()
+        atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()
+        atrasos_recreo = total_atrasos - atrasos_llegada
+        total_retiros = retiros.count()
+
+        # Resumen
+        elements.append(Paragraph(f"Resumen del Curso — {mes_label}", styles["ResumenTitulo"]))
+        stat = _stat_table([
+            (total_atrasos, "Total Atrasos"),
+            (atrasos_llegada, "Llegada tardía"),
+            (atrasos_recreo, "Recreo/Pasillo"),
+            (total_retiros, "Total Retiros"),
+        ])
+        elements.append(stat)
+        elements.append(Spacer(1, 3*mm))
+
+        # Alertas
+        motivos_salud = ["ENFERMO/A", "CONTROL MÉDICO", "ACC. ESCOLAR", "TERAPIA", "KINESIÓLOGO"]
+        retiros_salud = retiros.filter(motivo__in=motivos_salud).count()
+        if total_atrasos > 30:
+            elements.append(Paragraph("⚠ El curso supera los 30 atrasos mensuales.", styles["AlertaWarning"]))
+        if retiros_salud > 0:
+            elements.append(Paragraph(f"ℹ {retiros_salud} retiros asociados a salud.", styles["AlertaInfo"]))
+
+        # Atrasos
+        elements.append(Paragraph("1.  Registro de Atrasos y Pases", styles["SeccionTitulo"]))
+        if total_atrasos == 0:
+            elements.append(Paragraph("No se registraron atrasos.", styles["Normal9"]))
+        else:
+            elements.append(Paragraph(f"Se registraron {total_atrasos} atrasos.", styles["Normal9"]))
+            rows = [[a.fecha.strftime("%d/%m/%Y"), a.alumno.nombre_completo, a.hora.strftime("%H:%M") if a.hora else "", a.tipo, a.lugar or ""]
+                    for a in atrasos.select_related("alumno").order_by("fecha", "hora")]
+            elements.append(_data_table(["Fecha", "Alumno/a", "Hora", "Tipo", "Razón"], rows,
+                                        col_widths=[22*mm, 50*mm, 18*mm, 22*mm, 40*mm]))
+            # Frecuencia
+            elements.append(Paragraph("Frecuencia por estudiante", styles["SubSeccion"]))
+            freq = atrasos.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+            elements.append(_freq_table("Alumno/a", [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]))
+
+        # Retiros
+        elements.append(Paragraph("2.  Registro de Retiros Anticipados", styles["SeccionTitulo"]))
+        if total_retiros == 0:
+            elements.append(Paragraph("No se registraron retiros.", styles["Normal9"]))
+        else:
+            elements.append(Paragraph(f"Se registraron {total_retiros} retiros.", styles["Normal9"]))
+            rows = [[r.fecha.strftime("%d/%m/%Y"), r.alumno.nombre_completo, r.hora.strftime("%H:%M") if r.hora else "", r.motivo]
+                    for r in retiros.select_related("alumno").order_by("fecha", "hora")]
+            elements.append(_data_table(["Fecha", "Alumno/a", "Hora", "Motivo"], rows,
+                                        col_widths=[24*mm, 55*mm, 20*mm, 50*mm]))
+            elements.append(Paragraph("Resumen por motivo", styles["SubSeccion"]))
+            mot = retiros.values("motivo").annotate(n=Count("id")).order_by("-n")
+            elements.append(_freq_table("Motivo", [(m["motivo"], m["n"]) for m in mot]))
+            elements.append(Paragraph("Frecuencia por estudiante", styles["SubSeccion"]))
+            freq = retiros.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+            elements.append(_freq_table("Alumno/a", [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]))
+
+        # Uniformes
+        if uniformes.exists():
+            elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
+            elements.append(Paragraph(f"Se registraron {uniformes.count()} situación(es) de uniforme incompleto.", styles["Normal9"]))
+            rows = [[u.fecha.strftime("%d/%m/%Y"), u.alumno.nombre_completo, u.falta, u.determinacion or "-"]
+                    for u in uniformes.select_related("alumno").order_by("fecha")]
+            elements.append(_data_table(["Fecha", "Alumno/a", "Falta", "Determinación"], rows,
+                                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm]))
+
+        # Celulares
+        if celulares.exists():
+            sec_n = 4 if uniformes.exists() else 3
+            elements.append(Paragraph(f"{sec_n}.  Retención de Celulares", styles["SeccionTitulo"]))
+            elements.append(Paragraph(f"Se registraron {celulares.count()} caso(s) de retención.", styles["Normal9"]))
+            rows = [[c.fecha.strftime("%d/%m/%Y"), c.alumno.nombre_completo, c.lugar_entregado, c.retiro]
+                    for c in celulares.select_related("alumno").order_by("fecha")]
+            elements.append(_data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro"], rows,
+                                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm]))
+
+        if i < len(cursos) - 1:
+            elements.append(PageBreak())
+
+    def on_page(canvas, doc):
+        _header_footer(canvas, doc, "Todos los Cursos", mes_label)
+
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+    return buf

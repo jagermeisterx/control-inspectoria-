@@ -19,6 +19,7 @@ urlpatterns = [
     # Exportaciones
     path("exportar/pdf/alumno/<int:pk>/", views.exportar_pdf_alumno, name="exportar_pdf_alumno"),
     path("exportar/pdf/curso/<str:curso>/", views.exportar_pdf_curso, name="exportar_pdf_curso"),
+    path("exportar/pdf/todos-cursos/", views.exportar_pdf_todos_cursos, name="exportar_pdf_todos_cursos"),
     path("exportar/excel/alumno/<int:pk>/", views.exportar_excel_alumno, name="exportar_excel_alumno"),
     path("exportar/excel/curso/<str:curso>/", views.exportar_excel_curso, name="exportar_excel_curso"),
     # API
