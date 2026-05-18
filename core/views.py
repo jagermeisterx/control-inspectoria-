@@ -466,3 +466,163 @@ def api_buscar_alumnos(request):
     )[:15]
     data = [{"id": a.id, "text": f"{a.nombre_completo} ({a.curso})"} for a in alumnos]
     return JsonResponse(data, safe=False)
+
+
+# ── Cargar datos históricos desde Excel ──
+@login_required
+def cargar_historico(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Solo administradores pueden cargar datos históricos.")
+        return redirect("dashboard")
+
+    if request.method == "POST" and request.FILES.get("archivo"):
+        archivo = request.FILES["archivo"]
+        try:
+            from datetime import datetime as dt, time as t
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
+            resultados = []
+
+            def parse_date(val):
+                if isinstance(val, date):
+                    return val
+                if hasattr(val, 'date'):
+                    return val.date()
+                if isinstance(val, str) and val:
+                    try:
+                        return dt.strptime(val, "%Y-%m-%d").date()
+                    except ValueError:
+                        return None
+                return None
+
+            def parse_time(val):
+                if isinstance(val, t):
+                    return val
+                if hasattr(val, 'time'):
+                    return val.time()
+                if isinstance(val, str) and val:
+                    try:
+                        return dt.strptime(val, "%H:%M").time()
+                    except ValueError:
+                        return t(8, 0)
+                return t(8, 0)
+
+            def get_alumno(nombre, apellido, curso):
+                nombre = (nombre or "").strip().upper()
+                apellido = (apellido or "").strip().upper()
+                if not nombre or not apellido:
+                    return None
+                al, _ = Alumno.objects.get_or_create(
+                    nombre=nombre, apellido=apellido, anio=date.today().year,
+                    defaults={"curso": curso or ""},
+                )
+                return al
+
+            # ── Retiros ──
+            if "Retiros" in wb.sheetnames:
+                count = 0
+                for row in wb["Retiros"].iter_rows(min_row=2, values_only=True):
+                    fecha = parse_date(row[0])
+                    if not fecha or not row[1] or not row[2]:
+                        continue
+                    al = get_alumno(row[1], row[2], row[3])
+                    if not al:
+                        continue
+                    Retiro.objects.create(
+                        alumno=al, fecha=fecha, hora=parse_time(row[5]),
+                        motivo=str(row[4] or "OTRO"),
+                        persona_retira=str(row[6] or ""),
+                        rut_retira=str(row[7] or ""),
+                        registrado_por=request.user,
+                    )
+                    count += 1
+                resultados.append(f"✓ {count} retiros")
+
+            # ── Atrasos ──
+            if "Atrasos" in wb.sheetnames:
+                count = 0
+                for row in wb["Atrasos"].iter_rows(min_row=2, values_only=True):
+                    fecha = parse_date(row[0])
+                    if not fecha or not row[1] or not row[2]:
+                        continue
+                    al = get_alumno(row[1], row[2], row[3])
+                    if not al:
+                        continue
+                    Atraso.objects.create(
+                        alumno=al, fecha=fecha, hora=parse_time(row[4]),
+                        tipo=str(row[5] or "LLEGADA"),
+                        lugar=str(row[6] or ""),
+                        registrado_por=request.user,
+                    )
+                    count += 1
+                resultados.append(f"✓ {count} atrasos")
+
+            # ── Uniformes ──
+            if "Uniformes" in wb.sheetnames:
+                count = 0
+                for row in wb["Uniformes"].iter_rows(min_row=2, values_only=True):
+                    fecha = parse_date(row[0])
+                    if not fecha or not row[1] or not row[2]:
+                        continue
+                    al = get_alumno(row[1], row[2], row[3])
+                    if not al:
+                        continue
+                    comprado = str(row[5] or "").upper() in ("SI", "SÍ")
+                    llamado = str(row[8] or "").upper() in ("SI", "SÍ")
+                    ControlUniforme.objects.create(
+                        alumno=al, fecha=fecha,
+                        falta=str(row[4] or "SIN UNIFORME"),
+                        tiene_uniforme_comprado=comprado,
+                        detalle=str(row[6] or ""),
+                        contacto_apoderado=str(row[7] or ""),
+                        llamado=llamado,
+                        registrado_por=request.user,
+                    )
+                    count += 1
+                resultados.append(f"✓ {count} uniformes")
+
+            # ── Celulares ──
+            if "Celulares" in wb.sheetnames:
+                count = 0
+                for row in wb["Celulares"].iter_rows(min_row=2, values_only=True):
+                    fecha = parse_date(row[0])
+                    if not fecha or not row[1] or not row[2]:
+                        continue
+                    al = get_alumno(row[1], row[2], row[3])
+                    if not al:
+                        continue
+                    aviso = str(row[6] or "").upper() in ("SI", "SÍ")
+                    Celular.objects.create(
+                        alumno=al, fecha=fecha,
+                        lugar_entregado=str(row[4] or "DIRECCIÓN"),
+                        retiro=str(row[5] or "AL FINAL DEL DÍA"),
+                        aviso_apoderado=aviso,
+                        registrado_por=request.user,
+                    )
+                    count += 1
+                resultados.append(f"✓ {count} celulares")
+
+            # ── Visitas ──
+            if "Visitas" in wb.sheetnames:
+                count = 0
+                for row in wb["Visitas"].iter_rows(min_row=2, values_only=True):
+                    fecha = parse_date(row[0])
+                    if not fecha:
+                        continue
+                    hora = parse_time(row[1]) if row[1] else None
+                    VisitaApoderado.objects.create(
+                        fecha=fecha, hora=hora,
+                        destino=str(row[2] or "INSPECTORÍA GENERAL"),
+                        funcionario=str(row[3] or ""),
+                        registrado_por=request.user,
+                    )
+                    count += 1
+                resultados.append(f"✓ {count} visitas")
+
+            wb.close()
+            messages.success(request, f"Carga completa: {' · '.join(resultados)}")
+            return redirect("dashboard")
+
+        except Exception as e:
+            messages.error(request, f"Error al procesar el archivo: {e}")
+
+    return render(request, "core/cargar_historico.html")

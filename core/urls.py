@@ -10,6 +10,7 @@ urlpatterns = [
     path("visitas/", views.visitas, name="visitas"),
     path("alumnos/", views.alumnos, name="alumnos"),
     path("alumnos/importar/", views.importar_alumnos, name="importar_alumnos"),
+    path("alumnos/cargar-historico/", views.cargar_historico, name="cargar_historico"),
     path("eliminar/<str:modelo>/<int:pk>/", views.eliminar_registro, name="eliminar_registro"),
     # Reportes
     path("reportes/", views.reportes, name="reportes"),

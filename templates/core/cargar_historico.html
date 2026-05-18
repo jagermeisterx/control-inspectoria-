@@ -1,0 +1,49 @@
+{% extends "core/base.html" %}
+{% block title %}Cargar Datos Históricos — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-database-up"></i> Cargar Datos Históricos</h1>
+    <a href="{% url 'alumnos' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3">Subir archivo de datos históricos (.xlsx)</h6>
+            <p class="text-muted small mb-3">
+                Este archivo carga registros masivos de retiros, atrasos, uniformes, celulares y visitas.
+                El archivo debe tener las siguientes hojas:
+            </p>
+
+            <div class="table-custom mb-3">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>Hoja</th><th>Columnas</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Retiros</strong></td><td>fecha, nombre, apellido, curso, motivo, hora, persona_retira, rut_retira</td></tr>
+                        <tr><td><strong>Atrasos</strong></td><td>fecha, nombre, apellido, curso, hora, tipo, lugar</td></tr>
+                        <tr><td><strong>Uniformes</strong></td><td>fecha, nombre, apellido, curso, falta, comprado, detalle, contacto, llamado</td></tr>
+                        <tr><td><strong>Celulares</strong></td><td>fecha, nombre, apellido, curso, lugar_entregado, retiro, aviso_apoderado</td></tr>
+                        <tr><td><strong>Visitas</strong></td><td>fecha, hora, destino, funcionario</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-warning small py-2">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Importante:</strong> Primero importa los alumnos desde <a href="{% url 'importar_alumnos' %}">Importar Alumnos</a>.
+                Si un alumno no existe al cargar los datos, se creará automáticamente.
+                <br>Esta operación puede demorar unos segundos dependiendo de la cantidad de registros.
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="archivo" class="form-control" accept=".xlsx" required>
+                <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-database-up"></i> Cargar Datos</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
