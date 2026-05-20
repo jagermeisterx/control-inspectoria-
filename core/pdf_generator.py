@@ -169,12 +169,16 @@ def _stat_table(data_pairs):
     """Crea cuadro resumen tipo tarjetas con estadísticas"""
     values = []
     labels = []
-    for val, label in data_pairs:
-        values.append(Paragraph(f'<font size="22"><b>{val}</b></font>', ParagraphStyle("v", alignment=TA_CENTER, textColor=ROJO)))
-        labels.append(Paragraph(f'<font size="8">{label}</font>', ParagraphStyle("l", alignment=TA_CENTER, textColor=GRIS)))
+    n = len(data_pairs)
+    for i, (val, label) in enumerate(data_pairs):
+        is_last = (i == n - 1)
+        txt_color = BLANCO if is_last else ROJO
+        lbl_color = colors.HexColor("#FFCCCC") if is_last else GRIS
+        values.append(Paragraph(f'<b>{val}</b>', ParagraphStyle(f"v{i}", fontSize=22, alignment=TA_CENTER, textColor=txt_color)))
+        labels.append(Paragraph(f'{label}', ParagraphStyle(f"l{i}", fontSize=8, alignment=TA_CENTER, textColor=lbl_color)))
 
-    col_w = 120 / len(data_pairs) * mm
-    t = Table([values, labels], colWidths=[col_w] * len(data_pairs))
+    col_w = 150 / n * mm
+    t = Table([values, labels], colWidths=[col_w] * n)
     t.setStyle(TableStyle([
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -184,9 +188,7 @@ def _stat_table(data_pairs):
         ("BOTTOMPADDING", (0, 0), (-1, 0), 2*mm),
         ("TOPPADDING", (0, 1), (-1, 1), 1*mm),
         ("BOTTOMPADDING", (0, 1), (-1, 1), 3*mm),
-        # Last column highlighted
         ("BACKGROUND", (-1, 0), (-1, -1), ROJO),
-        ("TEXTCOLOR", (-1, 0), (-1, -1), BLANCO),
     ]))
     return t
 

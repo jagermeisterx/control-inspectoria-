@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Uniformes — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -13,39 +14,19 @@
         <div class="row g-2">
             <div class="col-md-4">
                 <label class="form-label">Alumno/a</label>
-                {{ form.alumno }}
+                <div class="autocomplete-alumno">
+                    {{ form.alumno_texto }}
+                    <input type="hidden" name="alumno_id" class="ac-hidden">
+                    <div class="ac-list"></div>
+                </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label">Fecha</label>
                 {{ form.fecha }}
             </div>
             <div class="col-md-3">
                 <label class="form-label">Falta</label>
                 {{ form.falta }}
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Contacto apoderado</label>
-                {{ form.contacto_apoderado }}
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Detalle</label>
-                {{ form.detalle }}
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Determinación</label>
-                {{ form.determinacion }}
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <div class="form-check">
-                    {{ form.tiene_uniforme_comprado }}
-                    <label class="form-check-label small">Comprado</label>
-                </div>
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <div class="form-check">
-                    {{ form.llamado }}
-                    <label class="form-check-label small">Llamado</label>
-                </div>
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100">Registrar</button>
@@ -68,7 +49,7 @@
 <div class="table-custom">
     <table class="table table-hover mb-0">
         <thead>
-            <tr><th>Fecha</th><th>Alumno/a</th><th>Curso</th><th>Falta</th><th>Comprado</th><th>Llamado</th><th>Determinación</th><th></th></tr>
+            <tr><th>Fecha</th><th>Alumno/a</th><th>Curso</th><th>Falta</th><th></th></tr>
         </thead>
         <tbody>
             {% for r in registros %}
@@ -77,9 +58,6 @@
                 <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
                 <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
                 <td>{{ r.falta }}</td>
-                <td>{% if r.tiene_uniforme_comprado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
-                <td>{% if r.llamado %}<i class="bi bi-telephone-fill text-success"></i>{% else %}<i class="bi bi-telephone text-muted"></i>{% endif %}</td>
-                <td class="small">{{ r.determinacion }}</td>
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'uniforme' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
@@ -88,9 +66,13 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="text-center text-muted py-4">No hay registros de uniforme</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4">No hay registros de uniforme</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/autocomplete.js' %}"></script>
 {% endblock %}

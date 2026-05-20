@@ -89,13 +89,21 @@ def dashboard(request):
 # ── Generic list+create pattern ──
 def _list_create(request, model, form_class, template, extra_context=None):
     form = form_class(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        obj = form.save(commit=False)
-        if hasattr(obj, "registrado_por"):
-            obj.registrado_por = request.user
-        obj.save()
-        messages.success(request, "Registro guardado correctamente.")
-        return redirect(request.path)
+    if request.method == "POST":
+        alumno_id = request.POST.get("alumno_id")
+        if form.is_valid():
+            obj = form.save(commit=False)
+            # Asignar alumno desde el campo oculto del autocompletado
+            if hasattr(obj, "alumno_id") and alumno_id:
+                obj.alumno_id = int(alumno_id)
+            if hasattr(obj, "registrado_por"):
+                obj.registrado_por = request.user
+            try:
+                obj.save()
+                messages.success(request, "Registro guardado correctamente.")
+                return redirect(request.path)
+            except Exception as e:
+                messages.error(request, f"Error: {e}")
 
     qs = model.objects.select_related("alumno") if hasattr(model, "alumno") else model.objects.all()
 

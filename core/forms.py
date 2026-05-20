@@ -24,26 +24,35 @@ class AlumnoForm(forms.ModelForm):
 
 
 class RetiroForm(forms.ModelForm):
+    alumno_texto = forms.CharField(
+        label="Alumno/a",
+        widget=forms.TextInput(attrs={"class": "form-control ac-input", "placeholder": "Escribir nombre...", "autocomplete": "off"}),
+    )
+
     class Meta:
         model = Retiro
-        fields = ["alumno", "fecha", "hora", "motivo", "persona_retira", "rut_retira", "observacion"]
+        fields = ["fecha", "hora", "motivo"]
         widgets = {
-            "alumno": forms.Select(attrs={"class": "form-select select-alumno"}),
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "hora": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "motivo": forms.Select(attrs={"class": "form-select"}),
-            "persona_retira": forms.TextInput(attrs={"class": "form-control"}),
-            "rut_retira": forms.TextInput(attrs={"class": "form-control", "placeholder": "12.345.678-9"}),
-            "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["alumno_texto"].required = True
 
 
 class AtrasoForm(forms.ModelForm):
+    alumno_texto = forms.CharField(
+        label="Alumno/a",
+        widget=forms.TextInput(attrs={"class": "form-control ac-input", "placeholder": "Escribir nombre...", "autocomplete": "off"}),
+    )
+
     class Meta:
         model = Atraso
-        fields = ["alumno", "fecha", "hora", "tipo", "lugar", "observacion"]
+        fields = ["fecha", "hora", "tipo", "lugar", "observacion"]
         widgets = {
-            "alumno": forms.Select(attrs={"class": "form-select select-alumno"}),
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "hora": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "tipo": forms.Select(attrs={"class": "form-select"}),
@@ -53,27 +62,30 @@ class AtrasoForm(forms.ModelForm):
 
 
 class ControlUniformeForm(forms.ModelForm):
+    alumno_texto = forms.CharField(
+        label="Alumno/a",
+        widget=forms.TextInput(attrs={"class": "form-control ac-input", "placeholder": "Escribir nombre...", "autocomplete": "off"}),
+    )
+
     class Meta:
         model = ControlUniforme
-        fields = ["alumno", "fecha", "falta", "tiene_uniforme_comprado", "detalle", "contacto_apoderado", "llamado", "determinacion"]
+        fields = ["fecha", "falta"]
         widgets = {
-            "alumno": forms.Select(attrs={"class": "form-select select-alumno"}),
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "falta": forms.Select(attrs={"class": "form-select"}),
-            "tiene_uniforme_comprado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "detalle": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
-            "contacto_apoderado": forms.TextInput(attrs={"class": "form-control"}),
-            "llamado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "determinacion": forms.TextInput(attrs={"class": "form-control"}),
         }
 
 
 class CelularForm(forms.ModelForm):
+    alumno_texto = forms.CharField(
+        label="Alumno/a",
+        widget=forms.TextInput(attrs={"class": "form-control ac-input", "placeholder": "Escribir nombre...", "autocomplete": "off"}),
+    )
+
     class Meta:
         model = Celular
-        fields = ["alumno", "fecha", "lugar_entregado", "retiro", "aviso_apoderado", "observacion"]
+        fields = ["fecha", "lugar_entregado", "retiro", "aviso_apoderado", "observacion"]
         widgets = {
-            "alumno": forms.Select(attrs={"class": "form-select select-alumno"}),
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "lugar_entregado": forms.Select(attrs={"class": "form-select"}),
             "retiro": forms.Select(attrs={"class": "form-select"}),
@@ -98,6 +110,6 @@ class VisitaApoderadoForm(forms.ModelForm):
 class ImportAlumnosForm(forms.Form):
     archivo = forms.FileField(
         label="Archivo Excel (.xlsx)",
-        help_text="El archivo debe tener columnas: nombre, apellido, curso, rut (opcional), apoderado_nombre (opcional), apoderado_telefono (opcional)",
+        help_text="Columnas: nombre, apellido, curso, rut (opc.), apoderado (opc.), teléfono (opc.)",
         widget=forms.FileInput(attrs={"class": "form-control", "accept": ".xlsx"}),
     )

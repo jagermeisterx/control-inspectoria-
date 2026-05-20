@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Retiros — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -13,7 +14,11 @@
         <div class="row g-2">
             <div class="col-md-4">
                 <label class="form-label">Alumno/a</label>
-                {{ form.alumno }}
+                <div class="autocomplete-alumno">
+                    {{ form.alumno_texto }}
+                    <input type="hidden" name="alumno_id" class="ac-hidden">
+                    <div class="ac-list"></div>
+                </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">Fecha</label>
@@ -23,21 +28,9 @@
                 <label class="form-label">Hora</label>
                 {{ form.hora }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <label class="form-label">Motivo</label>
                 {{ form.motivo }}
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Persona que retira</label>
-                {{ form.persona_retira }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">RUT</label>
-                {{ form.rut_retira }}
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">Observación</label>
-                {{ form.observacion }}
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100">Registrar</button>
@@ -49,8 +42,8 @@
 <div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
     <form method="get" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
         <input type="text" name="buscar" class="form-control form-control-sm" style="max-width:250px" placeholder="🔍 Buscar alumno..." value="{{ buscar }}">
-        <input type="date" name="fecha_desde" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_desde }}" placeholder="Desde">
-        <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_hasta }}" placeholder="Hasta">
+        <input type="date" name="fecha_desde" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_desde }}">
+        <input type="date" name="fecha_hasta" class="form-control form-control-sm" style="max-width:160px" value="{{ fecha_hasta }}">
         <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
         {% if buscar or fecha_desde or fecha_hasta %}<a href="{% url 'retiros' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
     </form>
@@ -60,9 +53,7 @@
 <div class="table-custom">
     <table class="table table-hover mb-0">
         <thead>
-            <tr>
-                <th>Fecha</th><th>Hora</th><th>Alumno/a</th><th>Curso</th><th>Motivo</th><th>Retira</th><th>RUT</th><th></th>
-            </tr>
+            <tr><th>Fecha</th><th>Hora</th><th>Alumno/a</th><th>Curso</th><th>Motivo</th><th></th></tr>
         </thead>
         <tbody>
             {% for r in registros %}
@@ -72,8 +63,6 @@
                 <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
                 <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
                 <td>{{ r.motivo }}</td>
-                <td>{{ r.persona_retira }}</td>
-                <td class="font-monospace small">{{ r.rut_retira }}</td>
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'retiro' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
@@ -82,9 +71,13 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="text-center text-muted py-4">No hay retiros registrados</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-4">No hay retiros registrados</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/autocomplete.js' %}"></script>
 {% endblock %}
