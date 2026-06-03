@@ -140,8 +140,13 @@ def _header_footer(canvas, doc, curso_label, mes_label):
     canvas.restoreState()
 
 
-def _portada(elements, styles, curso_label, mes_label):
-    """Genera la portada del informe"""
+def _portada(elements, styles, curso_label, mes_label, simple=False):
+    """Genera la portada del informe.
+
+    Si simple=True, omite las líneas secundarias (informe específico, label de
+    curso, leyenda de uso interno). Útil para reportes puntuales que no
+    requieren la portada institucional completa.
+    """
     elements.append(Spacer(1, 30*mm))
 
     # Logo centrado grande
@@ -157,11 +162,16 @@ def _portada(elements, styles, curso_label, mes_label):
     elements.append(HRFlowable(width="60%", thickness=1, color=DORADO, spaceBefore=2*mm, spaceAfter=4*mm, hAlign="CENTER"))
 
     elements.append(Paragraph("INSPECTORÍA GENERAL", styles["Subtitulo"]))
-    elements.append(Paragraph(f"Informe de Convivencia Escolar — {mes_label}", styles["Normal9Gray"]))
-    elements.append(Spacer(1, 2*mm))
-    elements.append(Paragraph(curso_label, styles["SubtituloCurso"]))
-    elements.append(Spacer(1, 15*mm))
-    elements.append(Paragraph("Documento de uso interno — Jefatura de Curso", styles["Interno"]))
+
+    if not simple:
+        elements.append(Paragraph(f"Informe de Convivencia Escolar — {mes_label}", styles["Normal9Gray"]))
+        elements.append(Spacer(1, 2*mm))
+        elements.append(Paragraph(curso_label, styles["SubtituloCurso"]))
+        elements.append(Spacer(1, 15*mm))
+        elements.append(Paragraph("Documento de uso interno — Jefatura de Curso", styles["Interno"]))
+    else:
+        elements.append(Spacer(1, 6*mm))
+
     elements.append(PageBreak())
 
 
@@ -751,26 +761,8 @@ def generar_pdf_atrasos_excel(filas, meta=None):
     mes_label = "Reporte desde Excel"
     curso_label = "Generado desde archivo Excel"
 
-    # ── Portada ──
-    _portada(elements, styles, curso_label, mes_label)
-
-    # ── Info de generación ──
-    elements.append(Paragraph("Datos del archivo procesado", styles["ResumenTitulo"]))
-    info_rows = [
-        ["Archivo:", str(meta.get("archivo_nombre", "—"))],
-        ["Generado:", str(meta.get("generado", "—"))],
-        ["Total de filas:", str(total)],
-        ["Filas con observaciones:", str(con_errores)],
-    ]
-    info_t = Table(info_rows, colWidths=[45*mm, 110*mm])
-    info_t.setStyle(TableStyle([
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("TEXTCOLOR", (0, 0), (0, -1), GRIS),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-    ]))
-    elements.append(info_t)
-    elements.append(Spacer(1, 4*mm))
+    # ── Portada (versión simple: sin informe específico ni leyenda de uso interno) ──
+    _portada(elements, styles, curso_label, mes_label, simple=True)
 
     # ── Resumen ──
     elements.append(Paragraph("Resumen General", styles["ResumenTitulo"]))
@@ -861,6 +853,51 @@ def generar_pdf_atrasos_excel(filas, meta=None):
                 extra_style.append(("TEXTCOLOR", (7, i), (7, i), colors.HexColor("#9B0000")))
         if extra_style:
             t_det.setStyle(TableStyle(extra_style))
+
+    # ── Sección de firmas (entrega al apoderado) ──
+    elements.append(Spacer(1, 15*mm))
+
+    firma_label_style = ParagraphStyle(
+        "FirmaLabel", parent=styles["Normal"], fontName="Helvetica-Bold",
+        fontSize=9, textColor=ROJO, alignment=TA_CENTER, spaceAfter=1*mm,
+    )
+    firma_hint_style = ParagraphStyle(
+        "FirmaHint", parent=styles["Normal"], fontName="Helvetica", fontSize=8,
+        textColor=GRIS, alignment=TA_CENTER, spaceBefore=1*mm,
+    )
+    firma_line_style = ParagraphStyle(
+        "FirmaLine", parent=styles["Normal"], fontName="Helvetica", fontSize=9,
+        textColor=NEGRO, alignment=TA_CENTER,
+    )
+
+    col_w = 75 * mm
+    firmas_data = [
+        [Paragraph("FUNCIONARIO QUE ENTREGA", firma_label_style),
+         Paragraph("APODERADO", firma_label_style)],
+        ["", ""],
+        [Paragraph("________________________________", firma_line_style),
+         Paragraph("________________________________", firma_line_style)],
+        [Paragraph("Nombre y firma", firma_hint_style),
+         Paragraph("Nombre y firma", firma_hint_style)],
+        [Paragraph("RUT: __________________________", firma_line_style),
+         Paragraph("RUT: __________________________", firma_line_style)],
+    ]
+    firmas_t = Table(firmas_data, colWidths=[col_w, col_w], rowHeights=[None, 12*mm, None, None, None])
+    firmas_t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, ROJO),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 1*mm),
+    ]))
+
+    fecha_entrega_style = ParagraphStyle(
+        "FechaEntrega", parent=styles["Normal"], fontName="Helvetica",
+        fontSize=9, textColor=GRIS, alignment=TA_LEFT, spaceBefore=4*mm,
+    )
+    fecha_p = Paragraph("Fecha de entrega: ____ / ____ / ________", fecha_entrega_style)
+
+    elements.append(KeepTogether([firmas_t, fecha_p]))
 
     # ── Build ──
     def on_page(canvas, doc):
