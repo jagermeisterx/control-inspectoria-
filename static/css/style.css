@@ -283,3 +283,32 @@ body {
     background: var(--primary-light);
     color: var(--primary);
 }
+
+/* Buscador de reportes (alumno) */
+#rep-resultados .list-group-item {
+    border-radius: 0.4rem;
+    margin-bottom: 2px;
+    border: 1px solid var(--gray-100);
+    font-size: 0.9rem;
+    transition: background-color 0.15s;
+}
+#rep-resultados .list-group-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+#rep-resultados .list-group-item i.bi-person-circle {
+    margin-right: 0.4rem;
+}
+.badge-curso-sm {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.3em 0.6em;
+}
+
+/* Filas con error en preview de Excel */
+.fila-con-error {
+    background-color: #fff3cd !important;
+}
+.fila-con-error td:first-child {
+    border-left: 3px solid #cc6600;
+}

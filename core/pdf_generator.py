@@ -716,3 +716,156 @@ def generar_pdf_todos_cursos(mes=None, anio=None):
     doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
     buf.seek(0)
     return buf
+
+
+# ════════════════════════════════════════════
+#  PDF DESDE EXCEL (sin persistir en BD)
+# ════════════════════════════════════════════
+
+def generar_pdf_atrasos_excel(filas, meta=None):
+    """Genera un PDF con los datos leídos de un Excel subido por el usuario.
+
+    filas: lista de dicts con keys: fecha, apellido, nombre, curso, hora, tipo, lugar, errores
+    meta: dict con archivo_nombre, generado, total, con_errores
+    """
+    meta = meta or {}
+    total = len(filas)
+    con_errores = sum(1 for f in filas if f.get("errores"))
+    cursos_unicos = sorted({(f.get("curso") or "(sin curso)") for f in filas})
+    tipos_unicos = sorted({(f.get("tipo") or "(sin tipo)") for f in filas})
+
+    # Conteo por curso y por tipo
+    from collections import Counter
+    cnt_curso = Counter((f.get("curso") or "(sin curso)") for f in filas)
+    cnt_tipo = Counter((f.get("tipo") or "(sin tipo)") for f in filas)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        topMargin=25*mm, bottomMargin=20*mm,
+        leftMargin=18*mm, rightMargin=18*mm,
+    )
+    elements = []
+    styles = _build_styles()
+
+    mes_label = "Reporte desde Excel"
+    curso_label = "Generado desde archivo Excel"
+
+    # ── Portada ──
+    _portada(elements, styles, curso_label, mes_label)
+
+    # ── Info de generación ──
+    elements.append(Paragraph("Datos del archivo procesado", styles["ResumenTitulo"]))
+    info_rows = [
+        ["Archivo:", str(meta.get("archivo_nombre", "—"))],
+        ["Generado:", str(meta.get("generado", "—"))],
+        ["Total de filas:", str(total)],
+        ["Filas con observaciones:", str(con_errores)],
+    ]
+    info_t = Table(info_rows, colWidths=[45*mm, 110*mm])
+    info_t.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("TEXTCOLOR", (0, 0), (0, -1), GRIS),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+    ]))
+    elements.append(info_t)
+    elements.append(Spacer(1, 4*mm))
+
+    # ── Resumen ──
+    elements.append(Paragraph("Resumen General", styles["ResumenTitulo"]))
+    stat = _stat_table([
+        (total, "Total Registros"),
+        (con_errores, "Con observaciones"),
+        (len(cursos_unicos), "Cursos"),
+        (len(tipos_unicos), "Tipos"),
+    ])
+    elements.append(stat)
+    elements.append(Spacer(1, 4*mm))
+
+    # ── Distribución por curso ──
+    if cnt_curso:
+        elements.append(Paragraph("Distribución por Curso", styles["SubSeccion"]))
+        rows = sorted(cnt_curso.items(), key=lambda x: -x[1])
+        t_curso = _data_table(
+            ["Curso", "Cantidad"],
+            [[c, str(n)] for c, n in rows],
+            col_widths=[100*mm, 40*mm],
+        )
+        elements.append(t_curso)
+        elements.append(Spacer(1, 3*mm))
+
+    # ── Distribución por tipo ──
+    if cnt_tipo:
+        elements.append(Paragraph("Distribución por Tipo", styles["SubSeccion"]))
+        rows = sorted(cnt_tipo.items(), key=lambda x: -x[1])
+        t_tipo = _data_table(
+            ["Tipo", "Cantidad"],
+            [[c, str(n)] for c, n in rows],
+            col_widths=[100*mm, 40*mm],
+        )
+        elements.append(t_tipo)
+        elements.append(Spacer(1, 4*mm))
+
+    # ── Detalle completo ──
+    elements.append(Paragraph("Detalle de Registros", styles["SeccionTitulo"]))
+    elements.append(Spacer(1, 2*mm))
+    if total == 0:
+        elements.append(Paragraph("No se encontraron filas en el archivo.", styles["Normal9"]))
+    else:
+        elements.append(Paragraph(
+            f"A continuación se muestran las {total} filas procesadas. "
+            f"Las filas marcadas con ⚠ presentan observaciones (ver columna 'Obs.').",
+            styles["Normal9"],
+        ))
+        elements.append(Spacer(1, 3*mm))
+
+        # Ordenar por fecha y luego por apellido
+        filas_ord = sorted(
+            filas,
+            key=lambda f: (
+                f.get("fecha") or date.min,
+                f.get("apellido") or "",
+                f.get("nombre") or "",
+            ),
+        )
+
+        detail_rows = []
+        for f in filas_ord:
+            errs = f.get("errores") or []
+            obs_txt = "; ".join(errs) if errs else ""
+            marker = "⚠ " if errs else ""
+            detail_rows.append([
+                marker + (f.get("fecha").strftime("%d/%m/%Y") if f.get("fecha") else "—"),
+                f.get("apellido") or "",
+                f.get("nombre") or "",
+                f.get("curso") or "",
+                f.get("hora").strftime("%H:%M") if f.get("hora") else "",
+                f.get("tipo") or "",
+                f.get("lugar") or "",
+                obs_txt,
+            ])
+
+        t_det = _data_table(
+            ["Fecha", "Apellido", "Nombre", "Curso", "Hora", "Tipo", "Lugar", "Obs."],
+            detail_rows,
+            col_widths=[20*mm, 22*mm, 22*mm, 18*mm, 14*mm, 18*mm, 22*mm, 38*mm],
+        )
+        elements.append(t_det)
+        # Resaltar filas con error sobre el estilo base
+        extra_style = []
+        for i in range(1, len(detail_rows) + 1):
+            errs = filas_ord[i - 1].get("errores") or []
+            if errs:
+                extra_style.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor("#FFF3CD")))
+                extra_style.append(("TEXTCOLOR", (7, i), (7, i), colors.HexColor("#9B0000")))
+        if extra_style:
+            t_det.setStyle(TableStyle(extra_style))
+
+    # ── Build ──
+    def on_page(canvas, doc):
+        _header_footer(canvas, doc, "Reporte Excel", "Generado desde archivo")
+
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+    return buf

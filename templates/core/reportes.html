@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Reportes — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -31,17 +32,32 @@
 </div>
 
 <div class="row g-4">
-    <!-- Reporte por alumno -->
+    <!-- Reporte por alumno (buscador mejorado) -->
     <div class="col-lg-6">
         <div class="card-custom">
             <h5 class="fw-bold mb-3"><i class="bi bi-person"></i> Reporte por Alumno</h5>
-            <p class="text-muted small">Historial completo con resumen y detalle. Descargable en PDF y Excel.</p>
-            <select class="form-select mb-3" id="select-alumno" onchange="if(this.value) window.location.href='/reportes/alumno/' + this.value + '/'">
-                <option value="">— Seleccionar alumno —</option>
-                {% for al in alumnos %}
-                <option value="{{ al.pk }}">{{ al.nombre_completo }} ({{ al.curso }})</option>
-                {% endfor %}
-            </select>
+            <p class="text-muted small">Filtra por curso y busca por nombre o apellido.</p>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <select id="rep-curso" class="form-select form-select-sm">
+                        <option value="">Todos los cursos</option>
+                        {% for c in cursos_filtrados %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <input type="text" id="rep-buscar" class="form-control form-control-sm"
+                           placeholder="🔍 Escribe nombre o apellido (mín. 2 letras)..." autocomplete="off">
+                </div>
+            </div>
+
+            <div id="rep-resultados" class="list-group" style="max-height:320px; overflow-y:auto">
+                <div class="text-muted small p-3 text-center" id="rep-empty">
+                    <i class="bi bi-search"></i> Empieza a escribir o selecciona un curso para buscar...
+                </div>
+            </div>
         </div>
     </div>
 
@@ -57,6 +73,27 @@
                 <p class="text-muted small">No hay cursos con alumnos registrados.</p>
                 {% endfor %}
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generar reporte desde Excel -->
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="card-custom">
+            <h5 class="fw-bold mb-2"><i class="bi bi-file-earmark-excel"></i> Generar Reporte desde Excel</h5>
+            <p class="text-muted small mb-3">
+                Sube un archivo <code>.xlsx</code> con las columnas
+                <code>FECHA</code>, <code>APELLIDO_ALUMNO</code>, <code>NOMBRE_ALUMNO</code>,
+                <code>CURSO</code>, <code>HORA</code>, <code>LLEGADA O RECREO</code>, <code>LUGAR</code>.
+                El reporte se genera en PDF sin guardar nada en la base de datos.
+            </p>
+            <a href="{% url 'reporte_desde_excel' %}" class="btn btn-success">
+                <i class="bi bi-upload"></i> Subir archivo y previsualizar
+            </a>
+            <a href="{% url 'descargar_plantilla_atrasos' %}" class="btn btn-outline-success">
+                <i class="bi bi-download"></i> Descargar plantilla
+            </a>
         </div>
     </div>
 </div>
@@ -79,4 +116,5 @@ document.querySelectorAll('.btn-curso').forEach(function(btn) {
     });
 });
 </script>
+<script src="{% static 'js/buscador_reportes.js' %}"></script>
 {% endblock %}

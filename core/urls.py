@@ -16,6 +16,9 @@ urlpatterns = [
     path("reportes/", views.reportes, name="reportes"),
     path("reportes/alumno/<int:pk>/", views.reporte_alumno, name="reporte_alumno"),
     path("reportes/curso/<str:curso>/", views.reporte_curso, name="reporte_curso"),
+    path("reportes/desde-excel/", views.reporte_desde_excel, name="reporte_desde_excel"),
+    path("reportes/desde-excel/pdf/", views.reporte_desde_excel_pdf, name="reporte_desde_excel_pdf"),
+    path("reportes/desde-excel/plantilla.xlsx", views.descargar_plantilla_atrasos, name="descargar_plantilla_atrasos"),
     # Exportaciones
     path("exportar/pdf/alumno/<int:pk>/", views.exportar_pdf_alumno, name="exportar_pdf_alumno"),
     path("exportar/pdf/curso/<str:curso>/", views.exportar_pdf_curso, name="exportar_pdf_curso"),

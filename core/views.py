@@ -260,6 +260,7 @@ def reportes(request):
     return render(request, "core/reportes.html", {
         "alumnos": Alumno.objects.filter(activo=True),
         "cursos": Alumno.objects.filter(activo=True).exclude(curso="").values_list("curso", flat=True).distinct().order_by("curso"),
+        "cursos_filtrados": Alumno.objects.filter(activo=True).exclude(curso="").values_list("curso", flat=True).distinct().order_by("curso"),
         "mes_actual": hoy.month,
         "anio_actual": hoy.year,
     })
@@ -407,13 +408,17 @@ def exportar_excel_curso(request, curso):
 @login_required
 def api_buscar_alumnos(request):
     from django.http import JsonResponse
-    q = request.GET.get("q", "")
-    if len(q) < 2:
+    q = request.GET.get("q", "").strip()
+    curso = request.GET.get("curso", "").strip()
+    if len(q) < 2 and not curso:
         return JsonResponse([], safe=False)
-    alumnos = Alumno.objects.filter(
-        Q(nombre__icontains=q) | Q(apellido__icontains=q), activo=True
-    )[:15]
-    data = [{"id": a.id, "text": f"{a.nombre_completo} ({a.curso})"} for a in alumnos]
+    qs = Alumno.objects.filter(activo=True)
+    if q:
+        qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q))
+    if curso:
+        qs = qs.filter(curso=curso)
+    qs = qs.order_by("apellido", "nombre")[:30]
+    data = [{"id": a.id, "text": a.nombre_completo, "curso": a.curso} for a in qs]
     return JsonResponse(data, safe=False)
 
 
@@ -575,3 +580,239 @@ def cargar_historico(request):
             messages.error(request, f"Error al procesar el archivo: {e}")
 
     return render(request, "core/cargar_historico.html")
+
+
+# ════════════════════════════════════════════
+#  REPORTE DESDE EXCEL (sin guardar en BD)
+# ════════════════════════════════════════════
+
+EXCEL_COLUMNAS = ["FECHA", "APELLIDO_ALUMNO", "NOMBRE_ALUMNO", "CURSO", "HORA", "LLEGADA O RECREO", "LUGAR"]
+TIPOS_VALIDOS = {"LLEGADA", "RECREO", "ALMUERZO"}
+
+
+def _normalizar_header(s):
+    import unicodedata
+    s = (s or "").strip().upper()
+    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    return s
+
+
+def _parse_date_excel(v):
+    from datetime import datetime as dt
+    if v is None or v == "":
+        return None, "fecha vacía"
+    if isinstance(v, date):
+        return v, None
+    if hasattr(v, "date"):
+        return v.date(), None
+    if isinstance(v, (int, float)):
+        try:
+            from datetime import timedelta
+            base = dt(1899, 12, 30)
+            return (base + timedelta(days=int(v))).date(), None
+        except Exception:
+            return None, f"fecha numérica inválida ({v})"
+    s = str(v).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"):
+        try:
+            return dt.strptime(s, fmt).date(), None
+        except ValueError:
+            continue
+    return None, f"fecha inválida '{s}'"
+
+
+def _parse_time_excel(v):
+    from datetime import datetime as dt, time as t
+    if v is None or v == "":
+        return None, "hora vacía"
+    if isinstance(v, t):
+        return v, None
+    if hasattr(v, "time") and not isinstance(v, date):
+        return v.time(), None
+    if isinstance(v, (int, float)):
+        try:
+            total_seconds = int(round(float(v) * 86400))
+            hours = (total_seconds // 3600) % 24
+            minutes = (total_seconds // 60) % 60
+            seconds = total_seconds % 60
+            return t(hours, minutes, seconds), None
+        except Exception:
+            return None, f"hora numérica inválida ({v})"
+    s = str(v).strip()
+    for fmt in ("%H:%M:%S", "%H:%M", "%I:%M %p", "%I:%M%p"):
+        try:
+            return dt.strptime(s, fmt).time(), None
+        except ValueError:
+            continue
+    return None, f"hora inválida '{s}'"
+
+
+def _normalizar_tipo(v):
+    s = _normalizar_header(v)
+    if s in TIPOS_VALIDOS:
+        return s, None
+    display = v if (v is not None and str(v).strip()) else "(vacío)"
+    return s, f"tipo '{display}' no reconocido (se esperaba LLEGADA, RECREO o ALMUERZO)"
+
+
+@login_required
+def reporte_desde_excel(request):
+    """Muestra form de subida + procesa Excel y guarda filas en sesión para preview."""
+    if request.method == "POST" and request.FILES.get("archivo"):
+        archivo = request.FILES["archivo"]
+        try:
+            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
+            ws = wb.active
+            filas = []
+            headers = None
+            for i, row in enumerate(ws.iter_rows(values_only=True)):
+                if i == 0:
+                    headers = [_normalizar_header(c) for c in row]
+                    if not all(h in headers for h in EXCEL_COLUMNAS[:5]):
+                        columnas_pos = EXCEL_COLUMNAS
+                    continue
+                if not row or all(c is None or (isinstance(c, str) and not c.strip()) for c in row):
+                    continue
+
+                if headers and all(h in headers for h in EXCEL_COLUMNAS[:5]):
+                    idx = {h: headers.index(h) for h in EXCEL_COLUMNAS}
+                    get = lambda key, r=row: r[idx[key]] if idx[key] < len(r) else None
+                else:
+                    get = lambda key, ri=i - 1, r=row: r[ri] if ri < len(r) else None
+
+                f_val, f_err = _parse_date_excel(get("FECHA"))
+                a_val = (str(get("APELLIDO_ALUMNO") or "").strip().upper())
+                n_val = (str(get("NOMBRE_ALUMNO") or "").strip().upper())
+                c_val = (str(get("CURSO") or "").strip())
+                h_val, h_err = _parse_time_excel(get("HORA"))
+                t_val, t_err = _normalizar_tipo(get("LLEGADA O RECREO"))
+                l_val = (str(get("LUGAR") or "").strip())
+
+                errores = []
+                if f_err:
+                    errores.append(f_err)
+                if not a_val:
+                    errores.append("apellido vacío")
+                if not n_val:
+                    errores.append("nombre vacío")
+                if h_err:
+                    errores.append(h_err)
+                if t_err:
+                    errores.append(t_err)
+
+                filas.append({
+                    "fecha": f_val,
+                    "apellido": a_val,
+                    "nombre": n_val,
+                    "curso": c_val,
+                    "hora": h_val,
+                    "tipo": t_val,
+                    "lugar": l_val,
+                    "errores": errores,
+                })
+
+            wb.close()
+
+            from datetime import datetime as dt
+            request.session["reporte_excel_meta"] = {
+                "archivo_nombre": archivo.name,
+                "generado": dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total": len(filas),
+                "con_errores": sum(1 for f in filas if f["errores"]),
+            }
+            session_filas = []
+            for f in filas:
+                session_filas.append({
+                    "fecha": f["fecha"].isoformat() if f["fecha"] else "",
+                    "apellido": f["apellido"],
+                    "nombre": f["nombre"],
+                    "curso": f["curso"],
+                    "hora": f["hora"].strftime("%H:%M") if f["hora"] else "",
+                    "tipo": f["tipo"],
+                    "lugar": f["lugar"],
+                    "errores": f["errores"],
+                })
+            request.session["reporte_excel_filas"] = session_filas
+            request.session.modified = True
+
+        except Exception as e:
+            messages.error(request, f"Error al procesar el archivo: {e}")
+
+    meta = request.session.get("reporte_excel_meta")
+    filas_sesion = request.session.get("reporte_excel_filas", [])
+    return render(request, "core/reporte_desde_excel.html", {
+        "meta": meta,
+        "filas": filas_sesion,
+    })
+
+
+@login_required
+def reporte_desde_excel_pdf(request):
+    """Genera PDF desde las filas guardadas en sesión."""
+    filas_sesion = request.session.get("reporte_excel_filas")
+    meta = request.session.get("reporte_excel_meta")
+    if not filas_sesion:
+        messages.error(request, "No hay datos para generar el reporte. Sube un archivo primero.")
+        return redirect("reporte_desde_excel")
+
+    filas = []
+    from datetime import date as d_cls, time as t_cls, datetime as dt_cls
+    for f in filas_sesion:
+        fecha = dt_cls.strptime(f["fecha"], "%Y-%m-%d").date() if f["fecha"] else None
+        hora = dt_cls.strptime(f["hora"], "%H:%M").time() if f["hora"] else None
+        filas.append({
+            "fecha": fecha,
+            "apellido": f["apellido"],
+            "nombre": f["nombre"],
+            "curso": f["curso"],
+            "hora": hora,
+            "tipo": f["tipo"],
+            "lugar": f["lugar"],
+            "errores": f.get("errores", []),
+        })
+
+    from .pdf_generator import generar_pdf_atrasos_excel
+    buf = generar_pdf_atrasos_excel(filas, meta or {})
+    nombre = (meta or {}).get("archivo_nombre", "reporte").rsplit(".", 1)[0]
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    resp = HttpResponse(buf, content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="Reporte_Atrasos_{ts}.pdf"'
+    return resp
+
+
+@login_required
+def descargar_plantilla_atrasos(request):
+    """Genera un .xlsx de ejemplo con los encabezados de columnas esperados."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Atrasos"
+
+    from openpyxl.styles import Font, PatternFill, Alignment
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="C8102E", end_color="C8102E", fill_type="solid")
+    center = Alignment(horizontal="center", vertical="center")
+
+    for col_idx, nombre in enumerate(EXCEL_COLUMNAS, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=nombre)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+
+    ws.append(["2026-03-15", "PÉREZ", "JUAN", "1° BÁSICO", "08:15", "LLEGADA", "Casa"])
+    ws.append(["2026-03-15", "GONZÁLEZ", "MARÍA", "2° BÁSICO", "10:30", "RECREO", "Pasillo"])
+    ws.append(["2026-03-16", "RAMÍREZ", "PEDRO", "I° MEDIO", "13:00", "ALMUERZO", "Comedor"])
+
+    anchos = {"A": 12, "B": 18, "C": 18, "D": 14, "E": 10, "F": 18, "G": 20}
+    for col, w in anchos.items():
+        ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(
+        buf,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = 'attachment; filename="plantilla_atrasos.xlsx"'
+    return resp

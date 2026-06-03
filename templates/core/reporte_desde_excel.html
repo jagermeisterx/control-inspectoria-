@@ -1,0 +1,152 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Reporte desde Excel — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-file-earmark-excel"></i> Reporte desde Excel</h1>
+        <span class="text-muted small">Sube un archivo .xlsx con las columnas FECHA, APELLIDO_ALUMNO, NOMBRE_ALUMNO, CURSO, HORA, LLEGADA O RECREO, LUGAR.</span>
+    </div>
+    <a href="{% url 'reportes' %}" class="btn btn-outline-secondary btn-sm">← Volver a Reportes</a>
+</div>
+
+<div class="row g-4">
+    <!-- Subida de archivo -->
+    <div class="col-lg-5">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-upload"></i> Subir archivo</h6>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label class="form-label small text-muted">Archivo Excel (.xlsx)</label>
+                <input type="file" name="archivo" class="form-control" accept=".xlsx" required>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-play-fill"></i> Procesar
+                    </button>
+                    <a href="{% url 'descargar_plantilla_atrasos' %}" class="btn btn-outline-success">
+                        <i class="bi bi-download"></i> Descargar plantilla
+                    </a>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <h6 class="fw-bold mb-2"><i class="bi bi-info-circle"></i> Formato esperado</h6>
+            <p class="small text-muted mb-2">El archivo debe tener las siguientes columnas (en cualquier orden):</p>
+            <ul class="small text-muted mb-0">
+                <li><strong>FECHA</strong>: 2026-03-15 o 15/03/2026</li>
+                <li><strong>APELLIDO_ALUMNO</strong>: texto</li>
+                <li><strong>NOMBRE_ALUMNO</strong>: texto</li>
+                <li><strong>CURSO</strong>: texto</li>
+                <li><strong>HORA</strong>: 08:15 o 08:15:30</li>
+                <li><strong>LLEGADA O RECREO</strong>: LLEGADA, RECREO o ALMUERZO</li>
+                <li><strong>LUGAR</strong>: texto libre</li>
+            </ul>
+            <p class="small text-muted mt-2 mb-0">
+                <i class="bi bi-exclamation-triangle"></i> Los datos <strong>no se guardan</strong> en la base de datos; solo se usan para generar el reporte.
+            </p>
+        </div>
+    </div>
+
+    <!-- Resultados / preview -->
+    <div class="col-lg-7">
+        <div class="card-custom">
+            {% if meta %}
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1"><i class="bi bi-eye"></i> Vista previa</h6>
+                        <span class="text-muted small">
+                            <strong>Archivo:</strong> {{ meta.archivo_nombre }} ·
+                            <strong>Generado:</strong> {{ meta.generado }}
+                        </span>
+                    </div>
+                    <a href="{% url 'reporte_desde_excel_pdf' %}" class="btn btn-danger">
+                        <i class="bi bi-file-pdf"></i> Descargar PDF
+                    </a>
+                </div>
+
+                <!-- Stats -->
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="stat-card text-center">
+                            <div class="stat-value text-danger">{{ meta.total }}</div>
+                            <div class="stat-label">Total filas</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-card text-center">
+                            <div class="stat-value text-success">{{ meta.total|add:"-"|add:meta.con_errores }}</div>
+                            <div class="stat-label">Válidas</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-card text-center">
+                            <div class="stat-value" style="color:var(--warning)">{{ meta.con_errores }}</div>
+                            <div class="stat-label">Con observaciones</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if meta.total == 0 %}
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        El archivo no contiene filas de datos. Verifica que la primera fila tenga los encabezados.
+                    </div>
+                {% else %}
+                    <div class="table-custom" style="max-height:500px; overflow-y:auto">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Alumno/a</th>
+                                    <th>Curso</th>
+                                    <th>Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Lugar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in filas %}
+                                <tr {% if f.errores %}class="fila-con-error" title="{{ f.errores|join:', ' }}"{% endif %}>
+                                    <td class="small">
+                                        {% if f.errores %}<i class="bi bi-exclamation-triangle text-warning"></i>{% endif %}
+                                        {{ f.fecha|default:"—" }}
+                                    </td>
+                                    <td class="small fw-semibold">{{ f.apellido }} {{ f.nombre }}</td>
+                                    <td class="small">{{ f.curso|default:"—" }}</td>
+                                    <td class="small">{{ f.hora|default:"—" }}</td>
+                                    <td class="small">
+                                        {% if f.tipo %}
+                                            {% if f.tipo == "LLEGADA" %}<span class="badge bg-danger">{{ f.tipo }}</span>
+                                            {% elif f.tipo == "RECREO" %}<span class="badge bg-warning text-dark">{{ f.tipo }}</span>
+                                            {% elif f.tipo == "ALMUERZO" %}<span class="badge bg-info text-dark">{{ f.tipo }}</span>
+                                            {% else %}<span class="badge bg-secondary">{{ f.tipo }}</span>{% endif %}
+                                        {% else %}—{% endif %}
+                                    </td>
+                                    <td class="small">{{ f.lugar|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if meta.con_errores > 0 %}
+                    <div class="alert alert-warning small mt-3 mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>{{ meta.con_errores }}</strong> fila(s) con observaciones. Pasa el mouse sobre ellas para ver el detalle.
+                        Estas filas <strong>se incluyen</strong> en el PDF para que puedas revisarlas.
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-file-earmark-arrow-up" style="font-size:3rem"></i>
+                    <p class="mt-3 mb-0">Sube un archivo Excel para ver la previsualización aquí.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
