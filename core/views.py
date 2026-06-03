@@ -601,10 +601,10 @@ def _parse_date_excel(v):
     from datetime import datetime as dt
     if v is None or v == "":
         return None, "fecha vacía"
+    if isinstance(v, dt):
+        return v.date(), None
     if isinstance(v, date):
         return v, None
-    if hasattr(v, "date"):
-        return v.date(), None
     if isinstance(v, (int, float)):
         try:
             from datetime import timedelta
@@ -613,7 +613,7 @@ def _parse_date_excel(v):
         except Exception:
             return None, f"fecha numérica inválida ({v})"
     s = str(v).strip()
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"):
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"):
         try:
             return dt.strptime(s, fmt).date(), None
         except ValueError:
@@ -625,10 +625,10 @@ def _parse_time_excel(v):
     from datetime import datetime as dt, time as t
     if v is None or v == "":
         return None, "hora vacía"
+    if isinstance(v, dt):
+        return v.time(), None
     if isinstance(v, t):
         return v, None
-    if hasattr(v, "time") and not isinstance(v, date):
-        return v.time(), None
     if isinstance(v, (int, float)):
         try:
             total_seconds = int(round(float(v) * 86400))
@@ -758,8 +758,8 @@ def reporte_desde_excel_pdf(request):
     filas = []
     from datetime import date as d_cls, time as t_cls, datetime as dt_cls
     for f in filas_sesion:
-        fecha = dt_cls.strptime(f["fecha"], "%Y-%m-%d").date() if f["fecha"] else None
-        hora = dt_cls.strptime(f["hora"], "%H:%M").time() if f["hora"] else None
+        fecha = _parse_date_excel(f["fecha"])[0] if f["fecha"] else None
+        hora = _parse_time_excel(f["hora"])[0] if f["hora"] else None
         filas.append({
             "fecha": fecha,
             "apellido": f["apellido"],
