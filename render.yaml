@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: inspectoria
+    runtime: python
+    plan: free
+    region: ohio
+    branch: main
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn inspectoria.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -"
+    autoDeploy: true
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: inspectoria.settings
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true

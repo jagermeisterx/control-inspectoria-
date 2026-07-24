@@ -1,1 +1,2 @@
-web: python manage.py migrate && python manage.py crear_admin && python manage.py collectstatic --noinput && gunicorn inspectoria.wsgi --bind 0.0.0.0:$PORT
+release: python manage.py migrate --noinput && python manage.py crear_admin
+web: gunicorn inspectoria.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -

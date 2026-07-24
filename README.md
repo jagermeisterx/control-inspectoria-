@@ -39,26 +39,57 @@ python manage.py runserver
 ```
 Abrir http://localhost:8000
 
-## Deploy en Railway
+## Deploy en Render + Supabase
 
-1. Crear cuenta en [railway.app](https://railway.app)
-2. Nuevo proyecto → Deploy from GitHub repo
-3. Agregar servicio PostgreSQL
-4. En Variables, agregar:
-   - `SECRET_KEY` → una clave aleatoria larga
-   - `DEBUG` → False
-   - `DATABASE_URL` → (se autocompleta con PostgreSQL)
-   - `ALLOWED_HOSTS` → .railway.app
-5. Railway detecta el Procfile automáticamente
+### Arquitectura
+- **App**: Render (plan Free, región Ohio)
+- **BD**: Supabase Postgres (Transaction pooler, puerto 6543)
+- **Estáticos**: WhiteNoise (incluido en el contenedor)
 
-## Deploy en Render
+### Requisitos previos
+1. Proyecto en [supabase.com](https://supabase.com) creado.
+2. Cuenta en [render.com](https://render.com) con el repo de GitHub conectado.
 
-1. Crear cuenta en [render.com](https://render.com)
-2. New Web Service → conectar repo GitHub
-3. Build Command: `pip install -r requirements.txt`
-4. Start Command: (copiar contenido del Procfile)
-5. Agregar PostgreSQL como servicio
-6. Configurar las mismas variables de entorno
+### Configurar DATABASE_URL en Supabase
+1. En el dashboard de Supabase: **Settings → Database → Connection string → Transaction pooler**.
+2. Copia la URL (puerto 6543) y agrégale al final:
+   ```
+   ?pgbouncer=true&connection_limit=1
+   ```
+3. Quedará así:
+   ```
+   postgresql://postgres.PROYECTO:[PASSWORD]@aws-0-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+   ```
+
+### Crear el Web Service en Render
+1. **Dashboard Render** → **New** → **Web Service** → conectar el repo.
+2. Configurar:
+   - **Name**: `inspectoria`
+   - **Region**: `Ohio (US East)`
+   - **Branch**: `main`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput`
+   - **Start Command**: `gunicorn inspectoria.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 60`
+   - **Plan**: `Free`
+3. En **Environment**, agregar:
+   - `DJANGO_SETTINGS_MODULE` = `inspectoria.settings`
+   - `PYTHON_VERSION` = `3.12.11`
+   - `DEBUG` = `False`
+   - `ALLOWED_HOSTS` = `.onrender.com`
+   - `CSRF_TRUSTED_ORIGINS` = `https://*.onrender.com`
+   - `SECRET_KEY` = (Generate)
+   - `DATABASE_URL` = (pegar la URL de Supabase)
+4. Click **Create Web Service**.
+
+### Verificación
+- Abre `https://inspectoria.onrender.com/` → debería redirigir a `/accounts/login/`.
+- Login con `admin / admin1234` (creado por el `release` command).
+- **Cambia la contraseña de inmediato** en `/admin/password_change/`.
+
+### Notas importantes
+- **Cold start**: el plan Free duerme la app tras 15 min sin tráfico. El primer request tarda ~30 s.
+- **Sin disco persistente**: no guardar archivos subidos en `media/`. Los Excel/PDF se procesan en memoria.
+- **Migraciones**: corren automáticamente antes de cada release (`release:` en Procfile).
 
 ## Importar alumnos
 
