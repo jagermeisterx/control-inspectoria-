@@ -776,6 +776,9 @@ a:hover { color: var(--primary-dark); }
   .user-chip span.user-name { display: none; }
 }
 
+.logout-form { display: inline; margin: 0; padding: 0; }
+.logout-form button { display: inline-flex; align-items: center; gap: 0.4rem; }
+
 /* ---------- Helpers ---------- */
 .text-muted { color: var(--text-muted) !important; }
 .bg-light { background: var(--surface-2) !important; }
