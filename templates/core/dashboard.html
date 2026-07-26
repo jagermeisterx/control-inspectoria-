@@ -3,52 +3,82 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
-    <span class="text-muted small">{{ mes_nombre }} · {{ total_alumnos }} alumnos activos</span>
+    <div>
+        <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    </div>
+    <span class="page-header-meta">{{ mes_nombre }} · {{ total_alumnos }} alumnos activos</span>
 </div>
 
-<!-- Stats row -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Retiros hoy</div>
-            <div class="stat-value text-danger">{{ retiros_hoy }}</div>
+            <div class="stat-icon">
+                <i class="bi bi-door-open"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Retiros hoy</div>
+                <div class="stat-value text-danger">{{ retiros_hoy }}</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Atrasos hoy</div>
-            <div class="stat-value" style="color:var(--warning)">{{ atrasos_hoy }}</div>
+            <div class="stat-icon icon-warn">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Atrasos hoy</div>
+                <div class="stat-value text-warning">{{ atrasos_hoy }}</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Retiros mes</div>
-            <div class="stat-value" style="color:var(--danger)">{{ retiros_mes }}</div>
+            <div class="stat-icon">
+                <i class="bi bi-door-closed"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Retiros mes</div>
+                <div class="stat-value text-danger">{{ retiros_mes }}</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Atrasos mes</div>
-            <div class="stat-value" style="color:var(--warning)">{{ atrasos_mes }}</div>
+            <div class="stat-icon icon-warn">
+                <i class="bi bi-stopwatch"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Atrasos mes</div>
+                <div class="stat-value text-warning">{{ atrasos_mes }}</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Uniformes mes</div>
-            <div class="stat-value" style="color:#7c3aed">{{ uniformes_mes }}</div>
+            <div class="stat-icon icon-violet">
+                <i class="bi bi-person-badge"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Uniformes mes</div>
+                <div class="stat-value" style="color:var(--violet)">{{ uniformes_mes }}</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
         <div class="stat-card">
-            <div class="stat-label">Visitas mes</div>
-            <div class="stat-value" style="color:var(--info)">{{ visitas_mes }}</div>
+            <div class="stat-icon icon-info">
+                <i class="bi bi-building"></i>
+            </div>
+            <div class="stat-body">
+                <div class="stat-label">Visitas mes</div>
+                <div class="stat-value text-info">{{ visitas_mes }}</div>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="row g-3">
-    <!-- Atrasos por curso -->
     <div class="col-lg-6">
         <div class="card-custom">
             <h6 class="fw-bold mb-3"><i class="bi bi-clock-history text-warning"></i> Atrasos por Curso</h6>
@@ -57,25 +87,26 @@
                 <div style="width:90px" class="text-end small fw-semibold">{{ item.alumno__curso }}</div>
                 <div class="flex-grow-1">
                     <div class="progress-bar-custom">
-                        {% widthratio item.total atrasos_por_curso.0.total 100 as pct %}
                         <div class="fill" style="width:{% widthratio item.total atrasos_por_curso.0.total 100 %}%"></div>
                     </div>
                 </div>
                 <div style="width:30px" class="text-end small fw-bold">{{ item.total }}</div>
             </div>
             {% empty %}
-            <p class="text-muted small">Sin datos este mes.</p>
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Sin datos este mes.</p>
+            </div>
             {% endfor %}
         </div>
     </div>
 
-    <!-- Top alumnos atrasos -->
     <div class="col-lg-6">
         <div class="card-custom">
             <h6 class="fw-bold mb-3"><i class="bi bi-trophy text-warning"></i> Top Alumnos con Más Atrasos</h6>
             {% for item in top_atrasos %}
             <div class="d-flex align-items-center gap-2 mb-2 py-1">
-                <div class="rank-circle" style="background:{% if forloop.counter == 1 %}var(--danger){% elif forloop.counter == 2 %}var(--warning){% elif forloop.counter == 3 %}#eab308{% else %}var(--gray-200);color:var(--gray-700){% endif %}">
+                <div class="rank-circle" style="background:{% if forloop.counter == 1 %}var(--danger){% elif forloop.counter == 2 %}var(--warning){% elif forloop.counter == 3 %}#eab308{% else %}var(--text-subtle);color:#fff{% endif %}">
                     {{ forloop.counter }}
                 </div>
                 <div class="flex-grow-1">
@@ -85,14 +116,16 @@
                 <div class="fw-bold text-danger">{{ item.total }}</div>
             </div>
             {% empty %}
-            <p class="text-muted small">Sin datos este mes.</p>
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Sin datos este mes.</p>
+            </div>
             {% endfor %}
         </div>
     </div>
 </div>
 
 <div class="row g-3 mt-1">
-    <!-- Retiros por motivo -->
     <div class="col-lg-6">
         <div class="card-custom">
             <h6 class="fw-bold mb-3"><i class="bi bi-door-open text-danger"></i> Retiros por Motivo</h6>
@@ -100,16 +133,18 @@
                 {% for item in retiros_por_motivo %}
                 <div class="d-flex align-items-center gap-1 bg-light rounded-3 px-3 py-2">
                     <span class="small">{{ item.motivo }}</span>
-                    <span class="fw-bold" style="color:var(--primary)">{{ item.total }}</span>
+                    <span class="fw-bold text-primary">{{ item.total }}</span>
                 </div>
                 {% empty %}
-                <p class="text-muted small">Sin datos este mes.</p>
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p>Sin datos este mes.</p>
+                </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- Últimos registros -->
     <div class="col-lg-6">
         <div class="card-custom">
             <h6 class="fw-bold mb-3"><i class="bi bi-clock"></i> Últimos Registros</h6>

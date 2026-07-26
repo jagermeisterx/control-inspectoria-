@@ -9,7 +9,7 @@
 </div>
 
 <div class="form-card">
-    <h6 class="fw-bold mb-3">➕ Agregar Alumno</h6>
+    <h6 class="fw-bold mb-3">Agregar Alumno</h6>
     <form method="post">
         {% csrf_token %}
         <div class="row g-2">
@@ -50,7 +50,7 @@
 
 <div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
     <form method="get" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
-        <input type="text" name="buscar" class="form-control form-control-sm" style="max-width:250px" placeholder="🔍 Buscar por nombre..." value="{{ buscar }}">
+        <input type="text" name="buscar" class="form-control form-control-sm" style="max-width:250px" placeholder="Buscar por nombre..." value="{{ buscar }}">
         <select name="curso" class="form-select form-select-sm" style="max-width:160px">
             <option value="">Todos los cursos</option>
             {% for code, label in cursos %}

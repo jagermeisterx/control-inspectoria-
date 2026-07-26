@@ -58,10 +58,11 @@ DATABASES = {
         "CONN_MAX_AGE": 0,
         "CONN_HEALTH_CHECKS": True,
         "DISABLE_SERVER_SIDE_CURSORS": True,
-        "OPTIONS": {
-            "connect_timeout": 10,
-            "sslmode": "require",
-        },
+        "OPTIONS": (
+            {"connect_timeout": 10, "sslmode": "require"}
+            if env("DATABASE_URL", default="").startswith(("postgres", "postgresql"))
+            else {}
+        ),
     }
 }
 

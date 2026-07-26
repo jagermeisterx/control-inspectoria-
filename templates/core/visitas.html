@@ -7,7 +7,7 @@
 </div>
 
 <div class="form-card">
-    <h6 class="fw-bold mb-3">➕ Nueva Visita</h6>
+    <h6 class="fw-bold mb-3">Nueva Visita</h6>
     <form method="post">
         {% csrf_token %}
         <div class="row g-2">
@@ -64,7 +64,7 @@
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'visita' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
-                        <button class="btn btn-outline-danger btn-delete">✕</button>
+                        <button class="btn btn-outline-danger btn-delete" type="submit" title="Eliminar" aria-label="Eliminar"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
             </tr>
