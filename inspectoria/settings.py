@@ -60,6 +60,7 @@ DATABASES = {
         "DISABLE_SERVER_SIDE_CURSORS": True,
         "OPTIONS": {
             "connect_timeout": 10,
+            "sslmode": "require",
         },
     }
 }
