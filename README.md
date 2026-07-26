@@ -30,7 +30,8 @@ cp .env.example .env
 ```bash
 python manage.py migrate
 python manage.py crear_admin
-# Esto crea usuario: admin / contraseña: admin1234
+# Esto crea el superusuario inicial (ver credenciales en core/management/commands/crear_admin.py).
+# **Cámbiala en el primer login** desde /admin/password_change/.
 ```
 
 ### 4. Ejecutar
@@ -83,7 +84,7 @@ Abrir http://localhost:8000
 
 ### Verificación
 - Abre `https://inspectoria.onrender.com/` → debería redirigir a `/accounts/login/`.
-- Login con `admin / admin1234` (creado por el `release` command).
+- Login con las credenciales definidas en `core/management/commands/crear_admin.py` (creado por el `release` command).
 - **Cambia la contraseña de inmediato** en `/admin/password_change/`.
 
 ### Notas importantes
