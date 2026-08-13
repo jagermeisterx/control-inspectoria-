@@ -779,6 +779,36 @@ a:hover { color: var(--primary-dark); }
 .logout-form { display: inline; margin: 0; padding: 0; }
 .logout-form button { display: inline-flex; align-items: center; gap: 0.4rem; }
 
+/* ---------- Loading overlay ---------- */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-card {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-6) var(--space-7);
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  min-width: 260px;
+}
+
+.loading-card .spinner-border {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--space-3);
+  color: var(--primary);
+}
+
 /* ---------- Helpers ---------- */
 .text-muted { color: var(--text-muted) !important; }
 .bg-light { background: var(--surface-2) !important; }

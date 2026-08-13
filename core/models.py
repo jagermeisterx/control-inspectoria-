@@ -34,6 +34,9 @@ class Alumno(models.Model):
         ordering = ["apellido", "nombre"]
         verbose_name = "Alumno"
         verbose_name_plural = "Alumnos"
+        indexes = [
+            models.Index(fields=["nombre", "apellido", "anio"], name="alumno_busqueda_idx"),
+        ]
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"

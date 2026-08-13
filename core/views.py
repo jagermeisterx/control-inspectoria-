@@ -6,6 +6,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -224,28 +225,55 @@ def importar_alumnos(request):
         if form.is_valid():
             archivo = request.FILES["archivo"]
             try:
+                anio = date.today().year
                 wb = openpyxl.load_workbook(archivo, read_only=True)
-                ws = wb.active
-                rows = list(ws.iter_rows(min_row=2, values_only=True))
-                count = 0
-                for row in rows:
-                    if not row or not row[0]:
-                        continue
-                    nombre = str(row[0]).strip().upper() if row[0] else ""
-                    apellido = str(row[1]).strip().upper() if len(row) > 1 and row[1] else ""
-                    curso = str(row[2]).strip() if len(row) > 2 and row[2] else ""
-                    rut = str(row[3]).strip() if len(row) > 3 and row[3] else ""
-                    apod_nombre = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ""
-                    apod_tel = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+                try:
+                    ws = wb.active
+                    existentes = {
+                        (al.nombre, al.apellido, al.anio): al
+                        for al in Alumno.objects.filter(anio=anio)
+                    }
+                    a_crear = []
+                    a_actualizar = []
+                    count = 0
+                    for row in ws.iter_rows(min_row=2, values_only=True):
+                        if not row or not row[0]:
+                            continue
+                        nombre = str(row[0]).strip().upper() if row[0] else ""
+                        apellido = str(row[1]).strip().upper() if len(row) > 1 and row[1] else ""
+                        curso = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+                        rut = str(row[3]).strip() if len(row) > 3 and row[3] else ""
+                        apod_nombre = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ""
+                        apod_tel = str(row[5]).strip() if len(row) > 5 and row[5] else ""
 
-                    if nombre and apellido:
-                        Alumno.objects.update_or_create(
-                            nombre=nombre, apellido=apellido, anio=date.today().year,
-                            defaults={"curso": curso, "rut": rut, "apoderado_nombre": apod_nombre, "apoderado_telefono": apod_tel},
-                        )
+                        if not nombre or not apellido:
+                            continue
+                        clave = (nombre, apellido, anio)
+                        if clave in existentes:
+                            al = existentes[clave]
+                            al.curso = curso
+                            al.rut = rut
+                            al.apoderado_nombre = apod_nombre
+                            al.apoderado_telefono = apod_tel
+                            a_actualizar.append(al)
+                        else:
+                            a_crear.append(Alumno(
+                                nombre=nombre, apellido=apellido, curso=curso,
+                                rut=rut, apoderado_nombre=apod_nombre,
+                                apoderado_telefono=apod_tel, anio=anio,
+                            ))
                         count += 1
-                messages.success(request, f"Se importaron {count} alumnos correctamente.")
-                return redirect("alumnos")
+                    with transaction.atomic():
+                        Alumno.objects.bulk_create(a_crear, batch_size=500)
+                        Alumno.objects.bulk_update(
+                            a_actualizar,
+                            ["curso", "rut", "apoderado_nombre", "apoderado_telefono"],
+                            batch_size=500,
+                        )
+                    messages.success(request, f"Se importaron {count} alumnos correctamente.")
+                    return redirect("alumnos")
+                finally:
+                    wb.close()
             except Exception as e:
                 messages.error(request, f"Error al procesar el archivo: {e}")
     else:
