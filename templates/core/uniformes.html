@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% load static %}
+{% load roles %}
 {% block title %}Uniformes — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -58,12 +59,14 @@
                 <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
                 <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
                 <td>{{ r.falta }}</td>
+                {% if user|tiene_rol:'inspector_general' %}
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'uniforme' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
                         <button class="btn btn-outline-danger btn-delete" type="submit" title="Eliminar" aria-label="Eliminar"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr><td colspan="5" class="text-center text-muted py-4">No hay registros de uniforme</td></tr>

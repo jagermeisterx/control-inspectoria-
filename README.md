@@ -103,10 +103,37 @@ Ir a **Alumnos → Importar Excel** y subir el archivo.
 
 ## Usuarios
 
-- **Admin**: acceso completo + panel de administración Django
-- **Inspector**: registra datos y ve reportes (crear desde /admin)
+El sistema maneja roles mediante **grupos de Django**. El superusuario (Admin) tiene acceso total. Para crear los grupos y usuarios, ejecutar los comandos de gestión:
 
-Para crear inspectores: entrar a /admin → Usuarios → Agregar usuario.
+### 1. Crear los grupos de roles
+```bash
+python manage.py crear_grupos
+```
+Crea: `inspector_general`, `inspector`, `profesor`, `director`.
+
+### 2. Crear usuarios con su rol
+```bash
+python manage.py crear_usuario --username inspector1 --grupo inspector --password CAMBIAME --nombre "Nombre" --apellido "Apellido"
+python manage.py crear_usuario --username director --grupo director --password CAMBIAME
+```
+
+También se pueden asignar roles desde `/admin` (sección Usuarios → grupo).
+
+### Matriz de permisos
+
+| Capacidad | Admin | Insp. General | Insp. Normal | Profesor | Director |
+|---|---|---|---|---|---|
+| Dashboard normal | ✅ | ✅ | ➡ Atrasos | ➡ Informes | ➡ Su dashboard |
+| Dashboard Director (comparación mensual) | ✅ | – | – | – | ✅ |
+| Anotar retiros / atrasos / uniformes | ✅ | ✅ | ✅ | – | – |
+| Anotar celulares (con "N° veces" por alumno) | ✅ | ✅ | ✅ | ✅ | – |
+| Anotar visitas | ✅ | ✅ | ✅ | – | – |
+| Borrar registros | ✅ | ✅ | – | – | – |
+| Alumnos (agregar / importar) | ✅ | ✅ | – | – | – |
+| Cargar histórico | ✅ | – | – | – | – |
+| Informes (alumno/curso, PDF, Excel) | ✅ | ✅ | – | ✅ | ✅ |
+| Reporte General (colegio/curso) | ✅ | ✅ | – | – | ✅ |
+| Panel Django Admin | ✅ | – | – | – | – |
 
 ## Módulos
 
@@ -117,3 +144,5 @@ Para crear inspectores: entrar a /admin → Usuarios → Agregar usuario.
 - **Celulares**: celulares requisados
 - **Visitas**: registro de apoderados que visitan el colegio
 - **Reportes**: por alumno y por curso, descargables en PDF y Excel
+- **Reporte General**: resumen del colegio o de un curso en un mes, con exportación PDF/Excel
+- **Dashboard Director**: métricas del mes con comparación vs mes anterior y tendencia de 6 meses

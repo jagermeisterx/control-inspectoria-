@@ -1,0 +1,115 @@
+{% extends "core/base.html" %}
+{% load roles %}
+{% block title %}Reporte General — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-collection"></i> Reporte General</h1>
+        <span class="page-header-meta">{{ mes_nombre }}</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% if curso %}{% url 'exportar_pdf_curso' curso %}{% else %}{% url 'exportar_pdf_todos_cursos' %}{% endif %}?mes={{ mes }}&anio={{ anio }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-pdf"></i> PDF
+        </a>
+        <a href="{% url 'exportar_excel_general' %}?mes={{ mes }}&anio={{ anio }}&curso={{ curso|urlencode }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+    </div>
+</div>
+
+<!-- Selector de curso y mes -->
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center mb-4">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+        <label class="small fw-semibold text-muted">Alcance:</label>
+        <select name="curso" class="form-select form-select-sm" style="max-width:220px">
+            <option value="">Todo el colegio</option>
+            {% for c in cursos %}
+            <option value="{{ c }}" {% if c == curso %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <select name="mes" class="form-select form-select-sm" style="max-width:130px">
+            {% for m, label in meses_opciones %}
+            <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="anio" class="form-select form-select-sm" style="max-width:100px">
+            {% for a in anios_opciones %}
+            <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        {% if curso %}<a href="{% url 'reporte_general' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
+</div>
+
+<!-- Totales -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-danger">{{ totales.retiros }}</div>
+            <div class="stat-label">Retiros</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--warning)">{{ totales.atrasos }}</div>
+            <div class="stat-label">Atrasos</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:#7c3aed">{{ totales.uniformes }}</div>
+            <div class="stat-label">Uniformes</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--info)">{{ totales.celulares }}</div>
+            <div class="stat-label">Celulares</div>
+        </div>
+    </div>
+</div>
+
+<div class="card-custom">
+    <h6 class="fw-bold mb-3">
+        {% if detalle_por_alumno %}
+        <i class="bi bi-person"></i> Detalle por alumno — {{ curso }}
+        {% else %}
+        <i class="bi bi-collection"></i> Resumen por curso
+        {% endif %}
+    </h6>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>{% if detalle_por_alumno %}Alumno/a{% else %}Curso{% endif %}</th>
+                    <th class="text-center">Retiros</th>
+                    <th class="text-center">Atrasos</th>
+                    <th class="text-center">Uniformes</th>
+                    <th class="text-center">Celulares</th>
+                    <th class="text-center">Total</th>
+                    {% if detalle_por_alumno %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in filas %}
+                <tr>
+                    <td class="fw-semibold">{{ f.nombre }}</td>
+                    <td class="text-center">{% if f.retiros %}<span class="badge bg-danger">{{ f.retiros }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.atrasos %}<span class="badge" style="background:var(--warning)">{{ f.atrasos }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.uniformes %}<span class="badge" style="background:#7c3aed">{{ f.uniformes }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.celulares %}<span class="badge" style="background:var(--info)">{{ f.celulares }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center fw-bold">{{ f.retiros|add:f.atrasos|add:f.uniformes|add:f.celulares }}</td>
+                    {% if detalle_por_alumno %}
+                    <td><a href="{% url 'reporte_alumno' f.alumno.pk %}" class="btn btn-outline-primary btn-sm py-0 px-1"><i class="bi bi-eye"></i></a></td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if detalle_por_alumno %}7{% else %}6{% endif %}" class="text-center text-muted py-4">Sin datos para este mes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

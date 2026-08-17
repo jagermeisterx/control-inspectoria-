@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load roles %}
 {% block title %}Visitas — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -61,12 +62,14 @@
                 <td><span class="badge" style="background:var(--info)">{{ r.destino }}</span></td>
                 <td class="fw-semibold">{{ r.funcionario }}</td>
                 <td class="small">{{ r.observacion|truncatewords:10 }}</td>
+                {% if user|tiene_rol:'inspector_general' %}
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'visita' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
                         <button class="btn btn-outline-danger btn-delete" type="submit" title="Eliminar" aria-label="Eliminar"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr><td colspan="6" class="text-center text-muted py-4">No hay visitas registradas</td></tr>

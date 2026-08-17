@@ -1,0 +1,219 @@
+{% extends "core/base.html" %}
+{% block title %}Dashboard Director — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-bar-chart-line"></i> Dashboard Director</h1>
+        <span class="page-header-meta">{{ total_alumnos }} alumnos activos</span>
+    </div>
+</div>
+
+<!-- Selector de mes -->
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center mb-4">
+    <label class="small fw-semibold text-muted">Mes a revisar:</label>
+    <select id="sel-mes" class="form-select form-select-sm" style="max-width:180px">
+        {% for m in meses_disponibles %}
+        <option value="{{ m.mes }}-{{ m.anio }}" {% if m.mes == mes and m.anio == anio %}selected{% endif %}>
+            {{ m.mes }} / {{ m.anio }}
+        </option>
+        {% endfor %}
+    </select>
+    <a href="#" id="btn-ir" class="btn btn-outline-primary btn-sm">Ver mes</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-door-open"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Retiros</div>
+                <div class="stat-value text-danger">{{ actual.retiros }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card">
+            <div class="stat-icon icon-warn"><i class="bi bi-clock-history"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Atrasos</div>
+                <div class="stat-value text-warning">{{ actual.atrasos }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card">
+            <div class="stat-icon icon-violet"><i class="bi bi-person-badge"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Uniformes</div>
+                <div class="stat-value" style="color:var(--violet)">{{ actual.uniformes }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card">
+            <div class="stat-icon icon-info"><i class="bi bi-phone"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Celulares</div>
+                <div class="stat-value text-info">{{ actual.celulares }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="stat-card">
+            <div class="stat-icon icon-warn"><i class="bi bi-building"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Visitas</div>
+                <div class="stat-value">{{ actual.visitas }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparación vs mes anterior -->
+<div class="card-custom mb-4">
+    <h6 class="fw-bold mb-3">
+        <i class="bi bi-arrow-left-right"></i> Comparación vs {{ mes_ant_nombre }}
+    </h6>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Indicador</th>
+                    <th class="text-center">{{ mes_nombre }}</th>
+                    <th class="text-center">{{ mes_ant_nombre }}</th>
+                    <th class="text-center">Variación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in comparacion %}
+                <tr>
+                    <td class="fw-semibold">{{ c.label }}</td>
+                    <td class="text-center">{{ c.actual }}</td>
+                    <td class="text-center text-muted">{{ c.anterior }}</td>
+                    <td class="text-center">
+                        {% if c.delta > 0 %}
+                        <span class="badge bg-danger"><i class="bi bi-arrow-up"></i> +{{ c.delta }} ({{ c.pct }}%)</span>
+                        {% elif c.delta < 0 %}
+                        <span class="badge bg-success"><i class="bi bi-arrow-down"></i> {{ c.delta }} ({{ c.pct }}%)</span>
+                        {% else %}
+                        <span class="badge bg-secondary">0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Tendencia últimos 6 meses -->
+<div class="card-custom mb-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up"></i> Tendencia últimos 6 meses</h6>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th class="text-center">Retiros</th>
+                    <th class="text-center">Atrasos</th>
+                    <th class="text-center">Uniformes</th>
+                    <th class="text-center">Celulares</th>
+                    <th class="text-center">Visitas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in serie %}
+                <tr>
+                    <td class="fw-semibold">{{ s.etiqueta }}</td>
+                    <td class="text-center">{{ s.retiros }}</td>
+                    <td class="text-center">{{ s.atrasos }}</td>
+                    <td class="text-center">{{ s.uniformes }}</td>
+                    <td class="text-center">{{ s.celulares }}</td>
+                    <td class="text-center">{{ s.visitas }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-clock-history text-warning"></i> Atrasos por Curso</h6>
+            {% for item in atrasos_por_curso %}
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div style="width:90px" class="text-end small fw-semibold">{{ item.alumno__curso }}</div>
+                <div class="flex-grow-1">
+                    <div class="progress-bar-custom">
+                        <div class="fill" style="width:{% widthratio item.total atrasos_por_curso.0.total 100 %}%"></div>
+                    </div>
+                </div>
+                <div style="width:30px" class="text-end small fw-bold">{{ item.total }}</div>
+            </div>
+            {% empty %}
+            <div class="empty-state"><i class="bi bi-inbox"></i><p>Sin datos este mes.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-trophy text-warning"></i> Top Alumnos con Más Atrasos</h6>
+            {% for item in top_atrasos %}
+            <div class="d-flex align-items-center gap-2 mb-2 py-1">
+                <div class="rank-circle" style="background:{% if forloop.counter == 1 %}var(--danger){% elif forloop.counter == 2 %}var(--warning){% elif forloop.counter == 3 %}#eab308{% else %}var(--text-subtle);color:#fff{% endif %}">
+                    {{ forloop.counter }}
+                </div>
+                <div class="flex-grow-1">
+                    <span class="fw-semibold small">{{ item.alumno__nombre }} {{ item.alumno__apellido }}</span>
+                    <span class="badge badge-curso ms-1">{{ item.alumno__curso }}</span>
+                </div>
+                <div class="fw-bold text-danger">{{ item.total }}</div>
+            </div>
+            {% empty %}
+            <div class="empty-state"><i class="bi bi-inbox"></i><p>Sin datos este mes.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-door-open text-danger"></i> Retiros por Motivo</h6>
+            <div class="d-flex flex-wrap gap-2">
+                {% for item in retiros_por_motivo %}
+                <div class="d-flex align-items-center gap-1 bg-light rounded-3 px-3 py-2">
+                    <span class="small">{{ item.motivo }}</span>
+                    <span class="fw-bold text-primary">{{ item.total }}</span>
+                </div>
+                {% empty %}
+                <div class="empty-state"><i class="bi bi-inbox"></i><p>Sin datos este mes.</p></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-arrow-right-circle text-danger"></i> Enlaces rápidos</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'reportes' %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-bar-graph"></i> Informes</a>
+                <a href="{% url 'reporte_general' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-collection"></i> Reporte General</a>
+                <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel general</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('btn-ir').addEventListener('click', function(e) {
+    e.preventDefault();
+    var val = document.getElementById('sel-mes').value;
+    var parts = val.split('-');
+    window.location.href = '/dashboard-director/?mes=' + parts[0] + '&anio=' + parts[1];
+});
+</script>
+{% endblock %}

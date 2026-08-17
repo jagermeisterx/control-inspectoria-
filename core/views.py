@@ -22,11 +22,19 @@ from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
     CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
 )
+from .roles import es_admin, rol_requerido, tiene_rol, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
 
 
 # ── Dashboard ──
 @login_required
 def dashboard(request):
+    if not es_admin(request.user) and tiene_rol(request.user, INSPECTOR):
+        return redirect("atrasos")
+    if not es_admin(request.user) and tiene_rol(request.user, PROFESOR):
+        return redirect("reportes")
+    if not es_admin(request.user) and tiene_rol(request.user, DIRECTOR):
+        return redirect("dashboard_director")
+
     hoy = date.today()
     mes = hoy.month
     anio = hoy.year
@@ -128,23 +136,29 @@ def _list_create(request, model, form_class, template, extra_context=None):
     return render(request, template, ctx)
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR)
 def retiros(request):
     return _list_create(request, Retiro, RetiroForm, "core/retiros.html")
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR)
 def atrasos(request):
     return _list_create(request, Atraso, AtrasoForm, "core/atrasos.html")
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR)
 def uniformes(request):
     return _list_create(request, ControlUniforme, ControlUniformeForm, "core/uniformes.html")
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR)
 def celulares(request):
-    return _list_create(request, Celular, CelularForm, "core/celulares.html")
+    conteo = dict(
+        Celular.objects.values_list("alumno_id").annotate(total=Count("id"))
+    )
+    return _list_create(
+        request, Celular, CelularForm, "core/celulares.html",
+        extra_context={"conteo_celulares": conteo},
+    )
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR)
 def visitas(request):
     form = VisitaApoderadoForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -166,7 +180,7 @@ def visitas(request):
 
 
 # ── Delete ──
-@login_required
+@rol_requerido(INSPECTOR_GENERAL)
 def eliminar_registro(request, modelo, pk):
     modelos = {
         "retiro": Retiro,
@@ -195,7 +209,7 @@ def eliminar_registro(request, modelo, pk):
 
 
 # ── Alumnos ──
-@login_required
+@rol_requerido(INSPECTOR_GENERAL)
 def alumnos(request):
     form = AlumnoForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -218,7 +232,7 @@ def alumnos(request):
     })
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL)
 def importar_alumnos(request):
     if request.method == "POST":
         form = ImportAlumnosForm(request.POST, request.FILES)
@@ -282,7 +296,7 @@ def importar_alumnos(request):
 
 
 # ── Reportes ──
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reportes(request):
     hoy = date.today()
     return render(request, "core/reportes.html", {
@@ -294,7 +308,7 @@ def reportes(request):
     })
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reporte_alumno(request, pk):
     alumno = get_object_or_404(Alumno, pk=pk)
     retiros = Retiro.objects.filter(alumno=alumno)
@@ -316,7 +330,7 @@ def reporte_alumno(request, pk):
     return render(request, "core/reporte_alumno.html", ctx)
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reporte_curso(request, curso):
     alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
     datos = []
@@ -332,8 +346,227 @@ def reporte_curso(request, curso):
     return render(request, "core/reporte_curso.html", {"curso": curso, "datos": datos})
 
 
+def _metricas_curso(curso, mes, anio):
+    return {
+        "retiros": Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio).count(),
+        "atrasos": Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio).count(),
+        "uniformes": ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio).count(),
+        "celulares": Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio).count(),
+    }
+
+
+def _metricas_alumno(alumno, mes, anio):
+    return {
+        "retiros": Retiro.objects.filter(alumno=alumno, fecha__month=mes, fecha__year=anio).count(),
+        "atrasos": Atraso.objects.filter(alumno=alumno, fecha__month=mes, fecha__year=anio).count(),
+        "uniformes": ControlUniforme.objects.filter(alumno=alumno, fecha__month=mes, fecha__year=anio).count(),
+        "celulares": Celular.objects.filter(alumno=alumno, fecha__month=mes, fecha__year=anio).count(),
+    }
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def reporte_general(request):
+    from .pdf_generator import MESES
+    hoy = date.today()
+    mes = int(request.GET.get("mes", hoy.month))
+    anio = int(request.GET.get("anio", hoy.year))
+    if not 1 <= mes <= 12:
+        mes = hoy.month
+    curso = request.GET.get("curso", "").strip()
+
+    cursos = list(
+        Alumno.objects.filter(activo=True).exclude(curso="")
+        .values_list("curso", flat=True).distinct().order_by("curso")
+    )
+
+    filas = []
+    if curso and curso in cursos:
+        alumnos_qs = Alumno.objects.filter(curso=curso, activo=True).order_by("apellido", "nombre")
+        for al in alumnos_qs:
+            m = _metricas_alumno(al, mes, anio)
+            filas.append({"alumno": al, "nombre": al.nombre_completo, **m})
+        filas.sort(key=lambda x: x["atrasos"] + x["retiros"], reverse=True)
+    else:
+        curso = ""
+        for c in cursos:
+            m = _metricas_curso(c, mes, anio)
+            filas.append({"alumno": None, "nombre": c, **m})
+        filas.sort(key=lambda x: x["atrasos"] + x["retiros"] + x["uniformes"] + x["celulares"], reverse=True)
+
+    totales = {
+        k: sum(f[k] for f in filas)
+        for k in ("retiros", "atrasos", "uniformes", "celulares")
+    }
+    totales["total"] = sum(totales.values())
+
+    ctx = {
+        "curso": curso,
+        "cursos": cursos,
+        "mes": mes,
+        "anio": anio,
+        "mes_nombre": f"{MESES[mes]} {anio}",
+        "filas": filas,
+        "totales": totales,
+        "detalle_por_alumno": bool(curso),
+        "meses_opciones": list(MESES.items()),
+        "anios_opciones": sorted({hoy.year, hoy.year - 1}, reverse=True),
+    }
+    return render(request, "core/reporte_general.html", ctx)
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def exportar_excel_general(request):
+    from .pdf_generator import MESES
+    hoy = date.today()
+    mes = int(request.GET.get("mes", hoy.month))
+    anio = int(request.GET.get("anio", hoy.year))
+    if not 1 <= mes <= 12:
+        mes = hoy.month
+    curso = request.GET.get("curso", "").strip()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Resumen"
+    ws.append(["Mes", "Alumno/Curso", "Retiros", "Atrasos", "Uniformes", "Celulares", "Total"])
+
+    if curso:
+        alumnos_qs = Alumno.objects.filter(curso=curso, activo=True).order_by("apellido", "nombre")
+        for al in alumnos_qs:
+            m = _metricas_alumno(al, mes, anio)
+            ws.append([f"{MESES[mes]} {anio}", al.nombre_completo, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
+                       m["retiros"] + m["atrasos"] + m["uniformes"] + m["celulares"]])
+    else:
+        cursos = (
+            Alumno.objects.filter(activo=True).exclude(curso="")
+            .values_list("curso", flat=True).distinct().order_by("curso")
+        )
+        for c in cursos:
+            m = _metricas_curso(c, mes, anio)
+            ws.append([f"{MESES[mes]} {anio}", c, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
+                       m["retiros"] + m["atrasos"] + m["uniformes"] + m["celulares"]])
+
+    from openpyxl.styles import Font, PatternFill
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="C8102E", end_color="C8102E", fill_type="solid")
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    for col, w in {"A": 14, "B": 34, "C": 10, "D": 10, "E": 10, "F": 10, "G": 10}.items():
+        ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    label = curso.replace(" ", "_") if curso else "colegio"
+    resp["Content-Disposition"] = f'attachment; filename="reporte_general_{label}_{mes}_{anio}.xlsx"'
+    return resp
+
+
+def _metricas_mes(mes, anio):
+    return {
+        "retiros": Retiro.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+        "atrasos": Atraso.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+        "uniformes": ControlUniforme.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+        "celulares": Celular.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+        "visitas": VisitaApoderado.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+    }
+
+
+@rol_requerido(DIRECTOR)
+def dashboard_director(request):
+    from .pdf_generator import MESES
+    hoy = date.today()
+    mes = int(request.GET.get("mes", hoy.month))
+    anio = int(request.GET.get("anio", hoy.year))
+    if not 1 <= mes <= 12:
+        mes = hoy.month
+
+    if mes == 1:
+        mes_ant, anio_ant = 12, anio - 1
+    else:
+        mes_ant, anio_ant = mes - 1, anio
+
+    actual = _metricas_mes(mes, anio)
+    anterior = _metricas_mes(mes_ant, anio_ant)
+
+    comparacion = []
+    for clave, label in [
+        ("retiros", "Retiros"), ("atrasos", "Atrasos"),
+        ("uniformes", "Uniformes"), ("celulares", "Celulares"),
+        ("visitas", "Visitas"),
+    ]:
+        a, b = actual[clave], anterior[clave]
+        delta = a - b
+        pct = round(delta / b * 100) if b else (100 if a else 0)
+        comparacion.append({
+            "label": label,
+            "actual": a,
+            "anterior": b,
+            "delta": delta,
+            "pct": pct,
+        })
+
+    atrasos_por_curso = (
+        Atraso.objects.filter(fecha__month=mes, fecha__year=anio)
+        .values("alumno__curso")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+    top_atrasos = (
+        Atraso.objects.filter(fecha__month=mes, fecha__year=anio)
+        .values("alumno__nombre", "alumno__apellido", "alumno__curso")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:10]
+    )
+    retiros_por_motivo = (
+        Retiro.objects.filter(fecha__month=mes, fecha__year=anio)
+        .values("motivo")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+
+    serie = []
+    m, a = hoy.month, hoy.year
+    for _ in range(6):
+        serie.append({"mes": m, "anio": a, "etiqueta": f"{MESES[m][:3]} {str(a)[2:]}", **_metricas_mes(m, a)})
+        if m == 1:
+            m, a = 12, a - 1
+        else:
+            m -= 1
+    serie.reverse()
+
+    meses_disponibles = []
+    m, a = hoy.month, hoy.year
+    for _ in range(12):
+        meses_disponibles.append({"mes": m, "anio": a})
+        if m == 1:
+            m, a = 12, a - 1
+        else:
+            m -= 1
+    meses_disponibles.reverse()
+
+    ctx = {
+        "mes": mes,
+        "anio": anio,
+        "mes_ant": mes_ant,
+        "anio_ant": anio_ant,
+        "mes_nombre": f"{MESES[mes]} {anio}",
+        "mes_ant_nombre": f"{MESES[mes_ant]} {anio_ant}",
+        "actual": actual,
+        "comparacion": comparacion,
+        "atrasos_por_curso": atrasos_por_curso,
+        "top_atrasos": top_atrasos,
+        "retiros_por_motivo": retiros_por_motivo,
+        "serie": serie,
+        "meses_disponibles": meses_disponibles,
+        "total_alumnos": Alumno.objects.filter(activo=True).count(),
+    }
+    return render(request, "core/dashboard_director.html", ctx)
+
+
 # ── Exportar PDF ──
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_alumno(request, pk):
     from .pdf_generator import generar_pdf_alumno
     alumno = get_object_or_404(Alumno, pk=pk)
@@ -343,7 +576,7 @@ def exportar_pdf_alumno(request, pk):
     return resp
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_curso(request, curso):
     from .pdf_generator import generar_pdf_curso
     mes = request.GET.get("mes")
@@ -356,7 +589,7 @@ def exportar_pdf_curso(request, curso):
     return resp
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_todos_cursos(request):
     from .pdf_generator import generar_pdf_todos_cursos
     mes = request.GET.get("mes")
@@ -372,7 +605,7 @@ def exportar_pdf_todos_cursos(request):
 
 
 # ── Exportar Excel ──
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_excel_alumno(request, pk):
     alumno = get_object_or_404(Alumno, pk=pk)
     wb = openpyxl.Workbook()
@@ -410,7 +643,7 @@ def exportar_excel_alumno(request, pk):
     return resp
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_excel_curso(request, curso):
     alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
     wb = openpyxl.Workbook()
@@ -463,6 +696,7 @@ def cargar_historico(request):
             from datetime import datetime as dt, time as t
             wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
             resultados = []
+            errores = []  # lista de dicts: {hoja, fila, fecha, alumno, curso, motivo}
 
             def parse_date(val):
                 if isinstance(val, date):
@@ -488,6 +722,14 @@ def cargar_historico(request):
                         return t(8, 0)
                 return t(8, 0)
 
+            def _es_verdadero(val):
+                """Convierte SI/SÍ/True/1/YES a True"""
+                if val is True or val == 1:
+                    return True
+                if val is None or val is False or val == 0:
+                    return False
+                return str(val).strip().upper() in ("SI", "SÍ", "YES", "TRUE", "1")
+
             def get_alumno(nombre, apellido, curso):
                 nombre = (nombre or "").strip().upper()
                 apellido = (apellido or "").strip().upper()
@@ -499,15 +741,30 @@ def cargar_historico(request):
                 )
                 return al
 
+            def registrar_error(hoja, fila_num, fecha, alumno_txt, curso, motivo):
+                errores.append({
+                    "hoja": hoja,
+                    "fila": fila_num,
+                    "fecha": str(fecha) if fecha else "",
+                    "alumno": alumno_txt,
+                    "curso": curso,
+                    "motivo": motivo,
+                })
+
             # ── Retiros ──
             if "Retiros" in wb.sheetnames:
                 count = 0
-                for row in wb["Retiros"].iter_rows(min_row=2, values_only=True):
+                for idx, row in enumerate(wb["Retiros"].iter_rows(min_row=2, values_only=True), start=2):
                     fecha = parse_date(row[0])
-                    if not fecha or not row[1] or not row[2]:
+                    if not fecha:
+                        registrar_error("Retiros", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
+                        continue
+                    if not row[1] or not row[2]:
+                        registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
                     al = get_alumno(row[1], row[2], row[3])
                     if not al:
+                        registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
                     Retiro.objects.create(
                         alumno=al, fecha=fecha, hora=parse_time(row[5]),
@@ -517,17 +774,22 @@ def cargar_historico(request):
                         registrado_por=request.user,
                     )
                     count += 1
-                resultados.append(f"✓ {count} retiros")
+                resultados.append(("Retiros", count, len([e for e in errores if e["hoja"] == "Retiros"])))
 
             # ── Atrasos ──
             if "Atrasos" in wb.sheetnames:
                 count = 0
-                for row in wb["Atrasos"].iter_rows(min_row=2, values_only=True):
+                for idx, row in enumerate(wb["Atrasos"].iter_rows(min_row=2, values_only=True), start=2):
                     fecha = parse_date(row[0])
-                    if not fecha or not row[1] or not row[2]:
+                    if not fecha:
+                        registrar_error("Atrasos", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
+                        continue
+                    if not row[1] or not row[2]:
+                        registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
                     al = get_alumno(row[1], row[2], row[3])
                     if not al:
+                        registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
                     Atraso.objects.create(
                         alumno=al, fecha=fecha, hora=parse_time(row[4]),
@@ -536,78 +798,138 @@ def cargar_historico(request):
                         registrado_por=request.user,
                     )
                     count += 1
-                resultados.append(f"✓ {count} atrasos")
+                resultados.append(("Atrasos", count, len([e for e in errores if e["hoja"] == "Atrasos"])))
 
             # ── Uniformes ──
             if "Uniformes" in wb.sheetnames:
                 count = 0
-                for row in wb["Uniformes"].iter_rows(min_row=2, values_only=True):
+                for idx, row in enumerate(wb["Uniformes"].iter_rows(min_row=2, values_only=True), start=2):
                     fecha = parse_date(row[0])
-                    if not fecha or not row[1] or not row[2]:
+                    if not fecha:
+                        registrar_error("Uniformes", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
+                        continue
+                    if not row[1] or not row[2]:
+                        registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
                     al = get_alumno(row[1], row[2], row[3])
                     if not al:
+                        registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    comprado = str(row[5] or "").upper() in ("SI", "SÍ")
-                    llamado = str(row[8] or "").upper() in ("SI", "SÍ")
                     ControlUniforme.objects.create(
                         alumno=al, fecha=fecha,
                         falta=str(row[4] or "SIN UNIFORME"),
-                        tiene_uniforme_comprado=comprado,
+                        tiene_uniforme_comprado=_es_verdadero(row[5]),
                         detalle=str(row[6] or ""),
                         contacto_apoderado=str(row[7] or ""),
-                        llamado=llamado,
+                        llamado=_es_verdadero(row[8]),
                         registrado_por=request.user,
                     )
                     count += 1
-                resultados.append(f"✓ {count} uniformes")
+                resultados.append(("Uniformes", count, len([e for e in errores if e["hoja"] == "Uniformes"])))
 
             # ── Celulares ──
             if "Celulares" in wb.sheetnames:
                 count = 0
-                for row in wb["Celulares"].iter_rows(min_row=2, values_only=True):
+                for idx, row in enumerate(wb["Celulares"].iter_rows(min_row=2, values_only=True), start=2):
                     fecha = parse_date(row[0])
-                    if not fecha or not row[1] or not row[2]:
+                    if not fecha:
+                        registrar_error("Celulares", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
+                        continue
+                    if not row[1] or not row[2]:
+                        registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
                     al = get_alumno(row[1], row[2], row[3])
                     if not al:
+                        registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    aviso = str(row[6] or "").upper() in ("SI", "SÍ")
                     Celular.objects.create(
                         alumno=al, fecha=fecha,
                         lugar_entregado=str(row[4] or "DIRECCIÓN"),
                         retiro=str(row[5] or "AL FINAL DEL DÍA"),
-                        aviso_apoderado=aviso,
+                        aviso_apoderado=_es_verdadero(row[6]),
                         registrado_por=request.user,
                     )
                     count += 1
-                resultados.append(f"✓ {count} celulares")
+                resultados.append(("Celulares", count, len([e for e in errores if e["hoja"] == "Celulares"])))
 
             # ── Visitas ──
             if "Visitas" in wb.sheetnames:
                 count = 0
-                for row in wb["Visitas"].iter_rows(min_row=2, values_only=True):
+                for idx, row in enumerate(wb["Visitas"].iter_rows(min_row=2, values_only=True), start=2):
                     fecha = parse_date(row[0])
                     if not fecha:
+                        registrar_error("Visitas", idx, row[0], "", "", "Fecha inválida o vacía")
                         continue
-                    hora = parse_time(row[1]) if row[1] else None
                     VisitaApoderado.objects.create(
-                        fecha=fecha, hora=hora,
+                        fecha=fecha, hora=parse_time(row[1]),
                         destino=str(row[2] or "INSPECTORÍA GENERAL"),
                         funcionario=str(row[3] or ""),
                         registrado_por=request.user,
                     )
                     count += 1
-                resultados.append(f"✓ {count} visitas")
+                resultados.append(("Visitas", count, len([e for e in errores if e["hoja"] == "Visitas"])))
 
             wb.close()
-            messages.success(request, f"Carga completa: {' · '.join(resultados)}")
-            return redirect("dashboard")
+
+            # Guardar errores en sesión para descarga
+            if errores:
+                request.session["cargar_errores"] = errores
+                request.session.modified = True
+
+            total_ok = sum(r[1] for r in resultados)
+            total_err = len(errores)
+            ctx = {
+                "resultados": resultados,
+                "errores_count": total_err,
+                "total_ok": total_ok,
+                "tiene_errores": total_err > 0,
+            }
+            return render(request, "core/cargar_historico_resultado.html", ctx)
 
         except Exception as e:
             messages.error(request, f"Error al procesar el archivo: {e}")
 
     return render(request, "core/cargar_historico.html")
+
+
+@login_required
+def descargar_errores_carga(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Solo administradores.")
+        return redirect("dashboard")
+    errores = request.session.get("cargar_errores", [])
+    if not errores:
+        messages.warning(request, "No hay errores pendientes. Carga un archivo primero.")
+        return redirect("cargar_historico")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Errores"
+    headers = ["HOJA", "FILA", "FECHA", "ALUMNO", "CURSO", "MOTIVO_DEL_ERROR"]
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    hdr_font = Font(bold=True, color="FFFFFF", size=10)
+    hdr_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    thin = Side(style="thin", color="D9D9D9")
+    for col, h in enumerate(headers, 1):
+        c = ws.cell(row=1, column=col, value=h)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = Alignment(horizontal="center")
+        c.border = Border(bottom=thin)
+    for r, err in enumerate(errores, start=2):
+        ws.cell(row=r, column=1, value=err["hoja"])
+        ws.cell(row=r, column=2, value=err["fila"])
+        ws.cell(row=r, column=3, value=err["fecha"])
+        ws.cell(row=r, column=4, value=err["alumno"])
+        ws.cell(row=r, column=5, value=err["curso"])
+        ws.cell(row=r, column=6, value=err["motivo"])
+    for col, w in {"A": 14, "B": 8, "C": 14, "D": 32, "E": 16, "F": 36}.items():
+        ws.column_dimensions[col].width = w
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = 'attachment; filename="errores_carga_historica.xlsx"'
+    return resp
 
 
 # ════════════════════════════════════════════
@@ -683,7 +1005,7 @@ def _normalizar_tipo(v):
     return s, f"tipo '{display}' no reconocido (se esperaba LLEGADA, RECREO o ALMUERZO)"
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reporte_desde_excel(request):
     """Muestra form de subida + procesa Excel y guarda filas en sesión para preview."""
     if request.method == "POST" and request.FILES.get("archivo"):
@@ -774,7 +1096,7 @@ def reporte_desde_excel(request):
     })
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reporte_desde_excel_pdf(request):
     """Genera PDF desde las filas guardadas en sesión."""
     filas_sesion = request.session.get("reporte_excel_filas")
@@ -809,7 +1131,7 @@ def reporte_desde_excel_pdf(request):
     return resp
 
 
-@login_required
+@rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def descargar_plantilla_atrasos(request):
     """Genera un .xlsx de ejemplo con los encabezados de columnas esperados."""
     wb = openpyxl.Workbook()

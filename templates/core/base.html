@@ -1,4 +1,5 @@
 {% load static %}
+{% load roles %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,9 +47,17 @@
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-section">Operación</div>
             <nav class="nav flex-column">
+                {% if user|tiene_rol:'director' %}
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_director' %}active{% endif %}" href="{% url 'dashboard_director' %}">
+                    <i class="bi bi-bar-chart-line"></i> Dashboard Director
+                </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general,inspector' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'retiros' %}active{% endif %}" href="{% url 'retiros' %}">
                     <i class="bi bi-door-open"></i> Retiros
                 </a>
@@ -58,22 +67,36 @@
                 <a class="nav-link {% if request.resolver_match.url_name == 'uniformes' %}active{% endif %}" href="{% url 'uniformes' %}">
                     <i class="bi bi-person-badge"></i> Uniformes
                 </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general,inspector,profesor' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'celulares' %}active{% endif %}" href="{% url 'celulares' %}">
                     <i class="bi bi-phone"></i> Celulares
                 </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general,inspector' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'visitas' %}active{% endif %}" href="{% url 'visitas' %}">
                     <i class="bi bi-building"></i> Visitas Apod.
                 </a>
+                {% endif %}
             </nav>
 
             <div class="sidebar-section">Reportes</div>
             <nav class="nav flex-column">
-                <a class="nav-link {% if 'reporte' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'reportes' %}">
+                {% if user|tiene_rol:'inspector_general,profesor,director' %}
+                <a class="nav-link {% if 'reporte' in request.resolver_match.url_name and request.resolver_match.url_name != 'reporte_general' %}active{% endif %}" href="{% url 'reportes' %}">
                     <i class="bi bi-file-earmark-bar-graph"></i> Informes
                 </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general,director' %}
+                <a class="nav-link {% if request.resolver_match.url_name == 'reporte_general' %}active{% endif %}" href="{% url 'reporte_general' %}">
+                    <i class="bi bi-collection"></i> Reporte General
+                </a>
+                {% endif %}
+                {% if user|tiene_rol:'inspector_general' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'alumnos' %}active{% endif %}" href="{% url 'alumnos' %}">
                     <i class="bi bi-people"></i> Alumnos
                 </a>
+                {% endif %}
             </nav>
 
             {% if user.is_superuser %}

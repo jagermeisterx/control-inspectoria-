@@ -1,0 +1,81 @@
+{% extends "core/base.html" %}
+{% block title %}Resultado de Carga — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-clipboard-check"></i> Resultado de la Carga</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card-custom">
+            {% if total_ok > 0 %}
+            <div class="alert alert-success py-3 mb-3">
+                <i class="bi bi-check-circle-fill"></i>
+                <strong>Carga exitosa:</strong> se importaron <strong>{{ total_ok }}</strong> registros correctamente.
+            </div>
+            {% endif %}
+
+            {% if tiene_errores %}
+            <div class="alert alert-warning py-3 mb-3">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>{{ errores_count }}</strong> registro(s) no se pudieron cargar.
+                Puedes descargar el archivo con los errores para revisarlos y corregirlos.
+            </div>
+            {% endif %}
+
+            <h6 class="fw-bold mb-3">Detalle por hoja:</h6>
+            <div class="table-custom mb-4">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Hoja</th>
+                            <th class="text-center">Cargados</th>
+                            <th class="text-center">Errores</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hoja, ok, err in resultados %}
+                        <tr>
+                            <td class="fw-semibold">{{ hoja }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ ok }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if err > 0 %}
+                                <span class="badge bg-danger">{{ err }}</span>
+                                {% else %}
+                                <span class="text-muted">0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if tiene_errores %}
+            <div class="d-flex gap-2 mb-3">
+                <a href="{% url 'descargar_errores_carga' %}" class="btn btn-warning">
+                    <i class="bi bi-download"></i> Descargar archivo de errores
+                </a>
+            </div>
+            <div class="alert alert-info small py-2">
+                <i class="bi bi-info-circle"></i>
+                El archivo de errores contiene una fila por cada registro que falló, con el motivo.
+                Corrige los datos en el original y vuelve a subir solo las filas que fallaron.
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2 mt-3">
+                <a href="{% url 'cargar_historico' %}" class="btn btn-primary">
+                    <i class="bi bi-arrow-repeat"></i> Cargar otro archivo
+                </a>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-house"></i> Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

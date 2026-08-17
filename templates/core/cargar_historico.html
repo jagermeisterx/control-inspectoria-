@@ -35,15 +35,40 @@
                 <i class="bi bi-exclamation-triangle"></i>
                 <strong>Importante:</strong> Primero importa los alumnos desde <a href="{% url 'importar_alumnos' %}">Importar Alumnos</a>.
                 Si un alumno no existe al cargar los datos, se creará automáticamente.
-                <br>Esta operación puede demorar unos segundos dependiendo de la cantidad de registros.
+                <br>Si hay registros con errores, podrás descargar un archivo Excel con los detalles para corregirlos.
             </div>
 
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" id="formCarga" onsubmit="return mostrarCarga()">
                 {% csrf_token %}
-                <input type="file" name="archivo" class="form-control" accept=".xlsx" required>
-                <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-database-up"></i> Cargar Datos</button>
+                <input type="file" name="archivo" class="form-control" accept=".xlsx" required id="inputArchivo">
+                <button type="submit" class="btn btn-primary mt-3" id="btnCargar">
+                    <i class="bi bi-database-up"></i> Cargar Datos
+                </button>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Overlay de carga -->
+<div id="overlayCarga" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; justify-content:center; align-items:center;">
+    <div class="text-center text-white">
+        <div class="spinner-border mb-3" style="width:3rem; height:3rem;" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <h5>Procesando archivo...</h5>
+        <p class="small opacity-75">Esto puede tomar unos segundos. No cierres esta página.</p>
+    </div>
+</div>
+
+<script>
+function mostrarCarga() {
+    var archivo = document.getElementById('inputArchivo').files[0];
+    if (!archivo) return false;
+    document.getElementById('overlayCarga').style.display = 'flex';
+    var btn = document.getElementById('btnCargar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Procesando...';
+    return true;
+}
+</script>
 {% endblock %}

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("dashboard-director/", views.dashboard_director, name="dashboard_director"),
     path("retiros/", views.retiros, name="retiros"),
     path("atrasos/", views.atrasos, name="atrasos"),
     path("uniformes/", views.uniformes, name="uniformes"),
@@ -11,9 +12,11 @@ urlpatterns = [
     path("alumnos/", views.alumnos, name="alumnos"),
     path("alumnos/importar/", views.importar_alumnos, name="importar_alumnos"),
     path("alumnos/cargar-historico/", views.cargar_historico, name="cargar_historico"),
+    path("alumnos/cargar-historico/errores/", views.descargar_errores_carga, name="descargar_errores_carga"),
     path("eliminar/<str:modelo>/<int:pk>/", views.eliminar_registro, name="eliminar_registro"),
     # Reportes
     path("reportes/", views.reportes, name="reportes"),
+    path("reportes/general/", views.reporte_general, name="reporte_general"),
     path("reportes/alumno/<int:pk>/", views.reporte_alumno, name="reporte_alumno"),
     path("reportes/curso/<str:curso>/", views.reporte_curso, name="reporte_curso"),
     path("reportes/desde-excel/", views.reporte_desde_excel, name="reporte_desde_excel"),
@@ -25,6 +28,7 @@ urlpatterns = [
     path("exportar/pdf/todos-cursos/", views.exportar_pdf_todos_cursos, name="exportar_pdf_todos_cursos"),
     path("exportar/excel/alumno/<int:pk>/", views.exportar_excel_alumno, name="exportar_excel_alumno"),
     path("exportar/excel/curso/<str:curso>/", views.exportar_excel_curso, name="exportar_excel_curso"),
+    path("exportar/excel/general/", views.exportar_excel_general, name="exportar_excel_general"),
     # API
     path("api/alumnos/", views.api_buscar_alumnos, name="api_buscar_alumnos"),
 ]

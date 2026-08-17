@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% load static %}
+{% load roles %}
 {% block title %}Celulares — Inspectoría Digital{% endblock %}
 
 {% block content %}
@@ -63,7 +64,7 @@
 <div class="table-custom">
     <table class="table table-hover mb-0">
         <thead>
-            <tr><th>Fecha</th><th>Alumno/a</th><th>Curso</th><th>Lugar</th><th>Retiro</th><th>Aviso</th><th></th></tr>
+            <tr><th>Fecha</th><th>Alumno/a</th><th>Curso</th><th class="text-center">N° veces</th><th>Lugar</th><th>Retiro</th><th>Aviso</th><th></th></tr>
         </thead>
         <tbody>
             {% for r in registros %}
@@ -71,18 +72,21 @@
                 <td>{{ r.fecha|date:"d/m" }}</td>
                 <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
                 <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
+                <td class="text-center fw-bold">{{ conteo_celulares|get_item:r.alumno_id|default:0 }}</td>
                 <td>{{ r.lugar_entregado }}</td>
                 <td>{{ r.retiro }}</td>
                 <td>{% if r.aviso_apoderado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
+                {% if user|tiene_rol:'inspector_general' %}
                 <td>
                     <form method="post" action="{% url 'eliminar_registro' 'celular' r.pk %}" onsubmit="return confirm('¿Eliminar?')">
                         {% csrf_token %}
                         <button class="btn btn-outline-danger btn-delete" type="submit" title="Eliminar" aria-label="Eliminar"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">No hay celulares registrados</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">No hay celulares registrados</td></tr>
             {% endfor %}
         </tbody>
     </table>
