@@ -731,15 +731,29 @@ def cargar_historico(request):
                 return str(val).strip().upper() in ("SI", "SÍ", "YES", "TRUE", "1")
 
             def get_alumno(nombre, apellido, curso):
+                from django.db import IntegrityError
                 nombre = (nombre or "").strip().upper()
                 apellido = (apellido or "").strip().upper()
                 if not nombre or not apellido:
                     return None
-                al, _ = Alumno.objects.get_or_create(
-                    nombre=nombre, apellido=apellido, anio=date.today().year,
-                    defaults={"curso": curso or ""},
-                )
-                return al
+                try:
+                    al = Alumno.objects.get(
+                        nombre=nombre, apellido=apellido, anio=date.today().year,
+                    )
+                    return al
+                except Alumno.DoesNotExist:
+                    pass
+                try:
+                    al = Alumno.objects.create(
+                        nombre=nombre, apellido=apellido, anio=date.today().year,
+                        curso=curso or "",
+                    )
+                    return al
+                except IntegrityError:
+                    try:
+                        return Alumno.objects.get(nombre=nombre, apellido=apellido, anio=date.today().year)
+                    except Alumno.DoesNotExist:
+                        return None
 
             def registrar_error(hoja, fila_num, fecha, alumno_txt, curso, motivo):
                 errores.append({
@@ -751,10 +765,93 @@ def cargar_historico(request):
                     "motivo": motivo,
                 })
 
-            # ── Retiros ──
+            # Cache de alumnos: pre-cargar todos los existentes en una sola query
+            year = date.today().year
+            alumnos_existentes = {}
+            for al in Alumno.objects.filter(anio=year).only("id", "nombre", "apellido"):
+                alumnos_existentes[(al.nombre, al.apellido)] = al
+            alumnos_nuevos_buf = {}
+
+            def get_alumno(nombre, apellido, curso):
+                nombre = (nombre or "").strip().upper()
+                apellido = (apellido or "").strip().upper()
+                if not nombre or not apellido:
+                    return None, nombre, apellido
+                key = (nombre, apellido)
+                if key in alumnos_existentes:
+                    return alumnos_existentes[key], nombre, apellido
+                if key in alumnos_nuevos_buf:
+                    return alumnos_nuevos_buf[key], nombre, apellido
+                al = Alumno(nombre=nombre, apellido=apellido, anio=year, curso=curso or "")
+                alumnos_nuevos_buf[key] = al
+                return al, nombre, apellido
+
+            def flush_alumnos():
+                if alumnos_nuevos_buf:
+                    Alumno.objects.bulk_create(list(alumnos_nuevos_buf.values()), ignore_conflicts=True)
+                    for al in Alumno.objects.filter(
+                        anio=year,
+                        nombre__in=[n.nombre for n in alumnos_nuevos_buf.values()],
+                        apellido__in=[n.apellido for n in alumnos_nuevos_buf.values()],
+                    ):
+                        alumnos_existentes[(al.nombre, al.apellido)] = al
+                    alumnos_nuevos_buf.clear()
+
+            # ── FASE 1: Pre-cargar alumnos y recolectar datos crudos ──
+            raw_data = {}  # hoja -> lista de (idx, row_data_dict, al)
+
             if "Retiros" in wb.sheetnames:
-                count = 0
+                rows = []
                 for idx, row in enumerate(wb["Retiros"].iter_rows(min_row=2, values_only=True), start=2):
+                    rows.append((idx, row))
+                raw_data["Retiros"] = rows
+
+            if "Atrasos" in wb.sheetnames:
+                rows = []
+                for idx, row in enumerate(wb["Atrasos"].iter_rows(min_row=2, values_only=True), start=2):
+                    rows.append((idx, row))
+                raw_data["Atrasos"] = rows
+
+            if "Uniformes" in wb.sheetnames:
+                rows = []
+                for idx, row in enumerate(wb["Uniformes"].iter_rows(min_row=2, values_only=True), start=2):
+                    rows.append((idx, row))
+                raw_data["Uniformes"] = rows
+
+            if "Celulares" in wb.sheetnames:
+                rows = []
+                for idx, row in enumerate(wb["Celulares"].iter_rows(min_row=2, values_only=True), start=2):
+                    rows.append((idx, row))
+                raw_data["Celulares"] = rows
+
+            if "Visitas" in wb.sheetnames:
+                rows = []
+                for idx, row in enumerate(wb["Visitas"].iter_rows(min_row=2, values_only=True), start=2):
+                    rows.append((idx, row))
+                raw_data["Visitas"] = rows
+
+            # Descubrir todos los alumnos necesarios
+            for hoja, rows in raw_data.items():
+                if hoja == "Visitas":
+                    continue
+                for idx, row in rows:
+                    if hoja == "Retiros":
+                        get_alumno(row[1], row[2], row[3])
+                    elif hoja == "Atrasos":
+                        get_alumno(row[1], row[2], row[3])
+                    elif hoja == "Uniformes":
+                        get_alumno(row[1], row[2], row[3])
+                    elif hoja == "Celulares":
+                        get_alumno(row[1], row[2], row[3])
+
+            # Flush: crear TODOS los alumnos nuevos de golpe
+            flush_alumnos()
+
+            # ── FASE 2: Crear registros usando alumnos ya guardados ──
+
+            if "Retiros" in raw_data:
+                objs = []
+                for idx, row in raw_data["Retiros"]:
                     fecha = parse_date(row[0])
                     if not fecha:
                         registrar_error("Retiros", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
@@ -762,24 +859,24 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    al = get_alumno(row[1], row[2], row[3])
+                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
+                    al = alumnos_existentes.get(key)
                     if not al:
                         registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    Retiro.objects.create(
+                    objs.append(Retiro(
                         alumno=al, fecha=fecha, hora=parse_time(row[5]),
                         motivo=str(row[4] or "OTRO"),
                         persona_retira=str(row[6] or ""),
                         rut_retira=str(row[7] or ""),
                         registrado_por=request.user,
-                    )
-                    count += 1
-                resultados.append(("Retiros", count, len([e for e in errores if e["hoja"] == "Retiros"])))
+                    ))
+                Retiro.objects.bulk_create(objs)
+                resultados.append(("Retiros", len(objs), len([e for e in errores if e["hoja"] == "Retiros"])))
 
-            # ── Atrasos ──
-            if "Atrasos" in wb.sheetnames:
-                count = 0
-                for idx, row in enumerate(wb["Atrasos"].iter_rows(min_row=2, values_only=True), start=2):
+            if "Atrasos" in raw_data:
+                objs = []
+                for idx, row in raw_data["Atrasos"]:
                     fecha = parse_date(row[0])
                     if not fecha:
                         registrar_error("Atrasos", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
@@ -787,23 +884,23 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    al = get_alumno(row[1], row[2], row[3])
+                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
+                    al = alumnos_existentes.get(key)
                     if not al:
                         registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    Atraso.objects.create(
+                    objs.append(Atraso(
                         alumno=al, fecha=fecha, hora=parse_time(row[4]),
                         tipo=str(row[5] or "LLEGADA"),
                         lugar=str(row[6] or ""),
                         registrado_por=request.user,
-                    )
-                    count += 1
-                resultados.append(("Atrasos", count, len([e for e in errores if e["hoja"] == "Atrasos"])))
+                    ))
+                Atraso.objects.bulk_create(objs)
+                resultados.append(("Atrasos", len(objs), len([e for e in errores if e["hoja"] == "Atrasos"])))
 
-            # ── Uniformes ──
-            if "Uniformes" in wb.sheetnames:
-                count = 0
-                for idx, row in enumerate(wb["Uniformes"].iter_rows(min_row=2, values_only=True), start=2):
+            if "Uniformes" in raw_data:
+                objs = []
+                for idx, row in raw_data["Uniformes"]:
                     fecha = parse_date(row[0])
                     if not fecha:
                         registrar_error("Uniformes", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
@@ -811,11 +908,12 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    al = get_alumno(row[1], row[2], row[3])
+                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
+                    al = alumnos_existentes.get(key)
                     if not al:
                         registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    ControlUniforme.objects.create(
+                    objs.append(ControlUniforme(
                         alumno=al, fecha=fecha,
                         falta=str(row[4] or "SIN UNIFORME"),
                         tiene_uniforme_comprado=_es_verdadero(row[5]),
@@ -823,14 +921,13 @@ def cargar_historico(request):
                         contacto_apoderado=str(row[7] or ""),
                         llamado=_es_verdadero(row[8]),
                         registrado_por=request.user,
-                    )
-                    count += 1
-                resultados.append(("Uniformes", count, len([e for e in errores if e["hoja"] == "Uniformes"])))
+                    ))
+                ControlUniforme.objects.bulk_create(objs)
+                resultados.append(("Uniformes", len(objs), len([e for e in errores if e["hoja"] == "Uniformes"])))
 
-            # ── Celulares ──
-            if "Celulares" in wb.sheetnames:
-                count = 0
-                for idx, row in enumerate(wb["Celulares"].iter_rows(min_row=2, values_only=True), start=2):
+            if "Celulares" in raw_data:
+                objs = []
+                for idx, row in raw_data["Celulares"]:
                     fecha = parse_date(row[0])
                     if not fecha:
                         registrar_error("Celulares", idx, row[0], f"{row[1]} {row[2]}", row[3], "Fecha inválida o vacía")
@@ -838,36 +935,36 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    al = get_alumno(row[1], row[2], row[3])
+                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
+                    al = alumnos_existentes.get(key)
                     if not al:
                         registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
                         continue
-                    Celular.objects.create(
+                    objs.append(Celular(
                         alumno=al, fecha=fecha,
                         lugar_entregado=str(row[4] or "DIRECCIÓN"),
                         retiro=str(row[5] or "AL FINAL DEL DÍA"),
                         aviso_apoderado=_es_verdadero(row[6]),
                         registrado_por=request.user,
-                    )
-                    count += 1
-                resultados.append(("Celulares", count, len([e for e in errores if e["hoja"] == "Celulares"])))
+                    ))
+                Celular.objects.bulk_create(objs)
+                resultados.append(("Celulares", len(objs), len([e for e in errores if e["hoja"] == "Celulares"])))
 
-            # ── Visitas ──
-            if "Visitas" in wb.sheetnames:
-                count = 0
-                for idx, row in enumerate(wb["Visitas"].iter_rows(min_row=2, values_only=True), start=2):
+            if "Visitas" in raw_data:
+                objs = []
+                for idx, row in raw_data["Visitas"]:
                     fecha = parse_date(row[0])
                     if not fecha:
                         registrar_error("Visitas", idx, row[0], "", "", "Fecha inválida o vacía")
                         continue
-                    VisitaApoderado.objects.create(
+                    objs.append(VisitaApoderado(
                         fecha=fecha, hora=parse_time(row[1]),
                         destino=str(row[2] or "INSPECTORÍA GENERAL"),
                         funcionario=str(row[3] or ""),
                         registrado_por=request.user,
-                    )
-                    count += 1
-                resultados.append(("Visitas", count, len([e for e in errores if e["hoja"] == "Visitas"])))
+                    ))
+                VisitaApoderado.objects.bulk_create(objs)
+                resultados.append(("Visitas", len(objs), len([e for e in errores if e["hoja"] == "Visitas"])))
 
             wb.close()
 
