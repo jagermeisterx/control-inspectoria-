@@ -17,10 +17,11 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado
 from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
     CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
+    LlamadaApoderadoForm,
 )
 from .roles import es_admin, rol_requerido, tiene_rol, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
 
@@ -107,6 +108,13 @@ def _list_create(request, model, form_class, template, extra_context=None):
                 obj.alumno_id = int(alumno_id)
             if hasattr(obj, "registrado_por"):
                 obj.registrado_por = request.user
+            # Auto-llenar motivo para atrasos segun es_campo
+            if isinstance(obj, Atraso) and not obj.motivo:
+                try:
+                    alumno = Alumno.objects.get(pk=obj.alumno_id)
+                    obj.motivo = "CAMPO" if alumno.es_campo else "ATRASO"
+                except Alumno.DoesNotExist:
+                    obj.motivo = "ATRASO"
             try:
                 obj.save()
                 messages.success(request, "Registro guardado correctamente.")
@@ -232,6 +240,18 @@ def alumnos(request):
     })
 
 
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR, PROFESOR)
+def toggle_campo(request, pk):
+    if request.method != "POST":
+        return redirect("alumnos")
+    alumno = get_object_or_404(Alumno, pk=pk)
+    alumno.es_campo = not alumno.es_campo
+    alumno.save(update_fields=["es_campo"])
+    estado = "marcado como Campo" if alumno.es_campo else "desmarcado como Campo"
+    messages.success(request, f"{alumno.nombre_completo} {estado}.")
+    return redirect("alumnos")
+
+
 @rol_requerido(INSPECTOR_GENERAL)
 def importar_alumnos(request):
     if request.method == "POST":
@@ -316,6 +336,19 @@ def reporte_alumno(request, pk):
     unifs = ControlUniforme.objects.filter(alumno=alumno)
     cels = Celular.objects.filter(alumno=alumno)
 
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
+    if fecha_desde:
+        retiros = retiros.filter(fecha__gte=fecha_desde)
+        atrs = atrs.filter(fecha__gte=fecha_desde)
+        unifs = unifs.filter(fecha__gte=fecha_desde)
+        cels = cels.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        retiros = retiros.filter(fecha__lte=fecha_hasta)
+        atrs = atrs.filter(fecha__lte=fecha_hasta)
+        unifs = unifs.filter(fecha__lte=fecha_hasta)
+        cels = cels.filter(fecha__lte=fecha_hasta)
+
     ctx = {
         "alumno": alumno,
         "retiros": retiros,
@@ -326,6 +359,8 @@ def reporte_alumno(request, pk):
         "total_atrasos": atrs.count(),
         "total_uniformes": unifs.count(),
         "total_celulares": cels.count(),
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
     }
     return render(request, "core/reporte_alumno.html", ctx)
 
@@ -333,17 +368,36 @@ def reporte_alumno(request, pk):
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def reporte_curso(request, curso):
     alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
     datos = []
     for al in alumnos_curso:
+        r_qs = al.retiros.all()
+        a_qs = al.atrasos.all()
+        u_qs = al.uniformes.all()
+        c_qs = al.celulares.all()
+        if fecha_desde:
+            r_qs = r_qs.filter(fecha__gte=fecha_desde)
+            a_qs = a_qs.filter(fecha__gte=fecha_desde)
+            u_qs = u_qs.filter(fecha__gte=fecha_desde)
+            c_qs = c_qs.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            r_qs = r_qs.filter(fecha__lte=fecha_hasta)
+            a_qs = a_qs.filter(fecha__lte=fecha_hasta)
+            u_qs = u_qs.filter(fecha__lte=fecha_hasta)
+            c_qs = c_qs.filter(fecha__lte=fecha_hasta)
         datos.append({
             "alumno": al,
-            "retiros": al.retiros.count(),
-            "atrasos": al.atrasos.count(),
-            "uniformes": al.uniformes.count(),
-            "celulares": al.celulares.count(),
+            "retiros": r_qs.count(),
+            "atrasos": a_qs.count(),
+            "uniformes": u_qs.count(),
+            "celulares": c_qs.count(),
         })
     datos.sort(key=lambda x: x["atrasos"] + x["retiros"], reverse=True)
-    return render(request, "core/reporte_curso.html", {"curso": curso, "datos": datos})
+    return render(request, "core/reporte_curso.html", {
+        "curso": curso, "datos": datos,
+        "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta,
+    })
 
 
 def _metricas_curso(curso, mes, anio):
@@ -364,6 +418,30 @@ def _metricas_alumno(alumno, mes, anio):
     }
 
 
+def _metricas_curso_rango(curso, fd, fh):
+    qs_r = Retiro.objects.filter(alumno__curso=curso)
+    qs_a = Atraso.objects.filter(alumno__curso=curso)
+    qs_u = ControlUniforme.objects.filter(alumno__curso=curso)
+    qs_c = Celular.objects.filter(alumno__curso=curso)
+    if fd:
+        qs_r, qs_a, qs_u, qs_c = qs_r.filter(fecha__gte=fd), qs_a.filter(fecha__gte=fd), qs_u.filter(fecha__gte=fd), qs_c.filter(fecha__gte=fd)
+    if fh:
+        qs_r, qs_a, qs_u, qs_c = qs_r.filter(fecha__lte=fh), qs_a.filter(fecha__lte=fh), qs_u.filter(fecha__lte=fh), qs_c.filter(fecha__lte=fh)
+    return {"retiros": qs_r.count(), "atrasos": qs_a.count(), "uniformes": qs_u.count(), "celulares": qs_c.count()}
+
+
+def _metricas_alumno_rango(alumno, fd, fh):
+    qs_r = Retiro.objects.filter(alumno=alumno)
+    qs_a = Atraso.objects.filter(alumno=alumno)
+    qs_u = ControlUniforme.objects.filter(alumno=alumno)
+    qs_c = Celular.objects.filter(alumno=alumno)
+    if fd:
+        qs_r, qs_a, qs_u, qs_c = qs_r.filter(fecha__gte=fd), qs_a.filter(fecha__gte=fd), qs_u.filter(fecha__gte=fd), qs_c.filter(fecha__gte=fd)
+    if fh:
+        qs_r, qs_a, qs_u, qs_c = qs_r.filter(fecha__lte=fh), qs_a.filter(fecha__lte=fh), qs_u.filter(fecha__lte=fh), qs_c.filter(fecha__lte=fh)
+    return {"retiros": qs_r.count(), "atrasos": qs_a.count(), "uniformes": qs_u.count(), "celulares": qs_c.count()}
+
+
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
 def reporte_general(request):
     from .pdf_generator import MESES
@@ -373,6 +451,9 @@ def reporte_general(request):
     if not 1 <= mes <= 12:
         mes = hoy.month
     curso = request.GET.get("curso", "").strip()
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
+    usa_rango = bool(fecha_desde or fecha_hasta)
 
     cursos = list(
         Alumno.objects.filter(activo=True).exclude(curso="")
@@ -383,13 +464,19 @@ def reporte_general(request):
     if curso and curso in cursos:
         alumnos_qs = Alumno.objects.filter(curso=curso, activo=True).order_by("apellido", "nombre")
         for al in alumnos_qs:
-            m = _metricas_alumno(al, mes, anio)
+            if usa_rango:
+                m = _metricas_alumno_rango(al, fecha_desde or None, fecha_hasta or None)
+            else:
+                m = _metricas_alumno(al, mes, anio)
             filas.append({"alumno": al, "nombre": al.nombre_completo, **m})
         filas.sort(key=lambda x: x["atrasos"] + x["retiros"], reverse=True)
     else:
         curso = ""
         for c in cursos:
-            m = _metricas_curso(c, mes, anio)
+            if usa_rango:
+                m = _metricas_curso_rango(c, fecha_desde or None, fecha_hasta or None)
+            else:
+                m = _metricas_curso(c, mes, anio)
             filas.append({"alumno": None, "nombre": c, **m})
         filas.sort(key=lambda x: x["atrasos"] + x["retiros"] + x["uniformes"] + x["celulares"], reverse=True)
 
@@ -399,17 +486,25 @@ def reporte_general(request):
     }
     totales["total"] = sum(totales.values())
 
+    if usa_rango:
+        rango_label = f"{fecha_desde or 'Inicio'} al {fecha_hasta or 'Hoy'}"
+    else:
+        rango_label = f"{MESES[mes]} {anio}"
+
     ctx = {
         "curso": curso,
         "cursos": cursos,
         "mes": mes,
         "anio": anio,
-        "mes_nombre": f"{MESES[mes]} {anio}",
+        "mes_nombre": rango_label,
         "filas": filas,
         "totales": totales,
         "detalle_por_alumno": bool(curso),
         "meses_opciones": list(MESES.items()),
         "anios_opciones": sorted({hoy.year, hoy.year - 1}, reverse=True),
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "usa_rango": usa_rango,
     }
     return render(request, "core/reporte_general.html", ctx)
 
@@ -423,6 +518,9 @@ def exportar_excel_general(request):
     if not 1 <= mes <= 12:
         mes = hoy.month
     curso = request.GET.get("curso", "").strip()
+    fecha_desde = request.GET.get("fecha_desde", "") or None
+    fecha_hasta = request.GET.get("fecha_hasta", "") or None
+    usa_rango = bool(fecha_desde or fecha_hasta)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -432,8 +530,11 @@ def exportar_excel_general(request):
     if curso:
         alumnos_qs = Alumno.objects.filter(curso=curso, activo=True).order_by("apellido", "nombre")
         for al in alumnos_qs:
-            m = _metricas_alumno(al, mes, anio)
-            ws.append([f"{MESES[mes]} {anio}", al.nombre_completo, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
+            if usa_rango:
+                m = _metricas_alumno_rango(al, fecha_desde, fecha_hasta)
+            else:
+                m = _metricas_alumno(al, mes, anio)
+            ws.append([f"{MESES[mes]} {anio}" if not usa_rango else f"{fecha_desde or 'Inicio'} a {fecha_hasta or 'Hoy'}", al.nombre_completo, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
                        m["retiros"] + m["atrasos"] + m["uniformes"] + m["celulares"]])
     else:
         cursos = (
@@ -441,8 +542,11 @@ def exportar_excel_general(request):
             .values_list("curso", flat=True).distinct().order_by("curso")
         )
         for c in cursos:
-            m = _metricas_curso(c, mes, anio)
-            ws.append([f"{MESES[mes]} {anio}", c, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
+            if usa_rango:
+                m = _metricas_curso_rango(c, fecha_desde, fecha_hasta)
+            else:
+                m = _metricas_curso(c, mes, anio)
+            ws.append([f"{MESES[mes]} {anio}" if not usa_rango else f"{fecha_desde or 'Inicio'} a {fecha_hasta or 'Hoy'}", c, m["retiros"], m["atrasos"], m["uniformes"], m["celulares"],
                        m["retiros"] + m["atrasos"] + m["uniformes"] + m["celulares"]])
 
     from openpyxl.styles import Font, PatternFill
@@ -565,6 +669,47 @@ def dashboard_director(request):
     return render(request, "core/dashboard_director.html", ctx)
 
 
+# ── Llamadas a Apoderados (alumnos con 3+ atrasos, excluyendo Campo) ──
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def llamadas(request):
+    form_llamada = LlamadaApoderadoForm()
+
+    alumnos_queryset = (
+        Alumno.objects.filter(activo=True)
+        .annotate(
+            atrasos_reales=Count("atrasos", filter=~Q(atrasos__motivo="CAMPO"))
+        )
+        .filter(atrasos_reales__gte=3)
+        .order_by("-atrasos_reales", "apellido", "nombre")
+    )
+
+    alumnos_data = []
+    for al in alumnos_queryset:
+        llamadas_hist = al.llamadas.all()[:10]
+        alumnos_data.append({
+            "alumno": al,
+            "total_atrasos": al.atrasos_reales,
+            "llamadas": llamadas_hist,
+        })
+
+    if request.method == "POST" and "registrar_llamada" in request.POST:
+        alumno_id = request.POST.get("alumno_id")
+        alumno = get_object_or_404(Alumno, pk=alumno_id)
+        form_llamada = LlamadaApoderadoForm(request.POST)
+        if form_llamada.is_valid():
+            llamada = form_llamada.save(commit=False)
+            llamada.alumno = alumno
+            llamada.registrado_por = request.user
+            llamada.save()
+            messages.success(request, f"Llamada registrada para {alumno.nombre_completo}.")
+            return redirect("llamadas")
+
+    return render(request, "core/llamadas.html", {
+        "alumnos_data": alumnos_data,
+        "form_llamada": form_llamada,
+    })
+
+
 # ── Exportar PDF ──
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_alumno(request, pk):
@@ -583,7 +728,9 @@ def exportar_pdf_curso(request, curso):
     anio = request.GET.get("anio")
     mes = int(mes) if mes else None
     anio = int(anio) if anio else None
-    buf = generar_pdf_curso(curso, mes=mes, anio=anio)
+    fecha_desde = request.GET.get("fecha_desde") or None
+    fecha_hasta = request.GET.get("fecha_hasta") or None
+    buf = generar_pdf_curso(curso, mes=mes, anio=anio, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
     resp = HttpResponse(buf, content_type="application/pdf")
     resp["Content-Disposition"] = f'attachment; filename="informe_{curso.replace(" ","_")}.pdf"'
     return resp
@@ -596,7 +743,9 @@ def exportar_pdf_todos_cursos(request):
     anio = request.GET.get("anio")
     mes = int(mes) if mes else None
     anio = int(anio) if anio else None
-    buf = generar_pdf_todos_cursos(mes=mes, anio=anio)
+    fecha_desde = request.GET.get("fecha_desde") or None
+    fecha_hasta = request.GET.get("fecha_hasta") or None
+    buf = generar_pdf_todos_cursos(mes=mes, anio=anio, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
     mes_label = mes or date.today().month
     anio_label = anio or date.today().year
     resp = HttpResponse(buf, content_type="application/pdf")
@@ -679,7 +828,7 @@ def api_buscar_alumnos(request):
     if curso:
         qs = qs.filter(curso=curso)
     qs = qs.order_by("apellido", "nombre")[:30]
-    data = [{"id": a.id, "text": a.nombre_completo, "curso": a.curso} for a in qs]
+    data = [{"id": a.id, "text": a.nombre_completo, "curso": a.curso, "es_campo": a.es_campo} for a in qs]
     return JsonResponse(data, safe=False)
 
 

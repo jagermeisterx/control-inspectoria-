@@ -242,15 +242,18 @@ def _freq_table(title, data_list):
 #  PDF POR CURSO (formato informe completo)
 # ════════════════════════════════════════════
 
-def generar_pdf_curso(curso, mes=None, anio=None):
+def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=None):
     """Genera PDF profesional de informe por curso, replicando el formato institucional"""
     hoy = date.today()
-    if mes is None:
-        mes = hoy.month
-    if anio is None:
-        anio = hoy.year
-
-    mes_label = f"{MESES[mes]} {anio}"
+    usa_rango = bool(fecha_desde or fecha_hasta)
+    if not usa_rango:
+        if mes is None:
+            mes = hoy.month
+        if anio is None:
+            anio = hoy.year
+        mes_label = f"{MESES[mes]} {anio}"
+    else:
+        mes_label = f"{fecha_desde or 'Inicio'} al {fecha_hasta or 'Hoy'}"
     curso_label = curso
 
     buf = io.BytesIO()
@@ -268,10 +271,26 @@ def generar_pdf_curso(curso, mes=None, anio=None):
 
     # ── Datos del mes ──
     alumnos_curso = Alumno.objects.filter(curso=curso, activo=True)
-    atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-    retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-    uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-    celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+    if usa_rango:
+        atrasos = Atraso.objects.filter(alumno__curso=curso)
+        retiros = Retiro.objects.filter(alumno__curso=curso)
+        uniformes = ControlUniforme.objects.filter(alumno__curso=curso)
+        celulares = Celular.objects.filter(alumno__curso=curso)
+        if fecha_desde:
+            atrasos = atrasos.filter(fecha__gte=fecha_desde)
+            retiros = retiros.filter(fecha__gte=fecha_desde)
+            uniformes = uniformes.filter(fecha__gte=fecha_desde)
+            celulares = celulares.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            atrasos = atrasos.filter(fecha__lte=fecha_hasta)
+            retiros = retiros.filter(fecha__lte=fecha_hasta)
+            uniformes = uniformes.filter(fecha__lte=fecha_hasta)
+            celulares = celulares.filter(fecha__lte=fecha_hasta)
+    else:
+        atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
 
     total_atrasos = atrasos.count()
     atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()
@@ -610,15 +629,18 @@ def generar_pdf_alumno(alumno):
 #  PDF TODOS LOS CURSOS (un informe por curso, concatenados)
 # ════════════════════════════════════════════
 
-def generar_pdf_todos_cursos(mes=None, anio=None):
+def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=None):
     """Genera un PDF con informes de todos los cursos concatenados"""
     hoy = date.today()
-    if mes is None:
-        mes = hoy.month
-    if anio is None:
-        anio = hoy.year
-
-    mes_label = f"{MESES[mes]} {anio}"
+    usa_rango = bool(fecha_desde or fecha_hasta)
+    if not usa_rango:
+        if mes is None:
+            mes = hoy.month
+        if anio is None:
+            anio = hoy.year
+        mes_label = f"{MESES[mes]} {anio}"
+    else:
+        mes_label = f"{fecha_desde or 'Inicio'} al {fecha_hasta or 'Hoy'}"
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -637,10 +659,26 @@ def generar_pdf_todos_cursos(mes=None, anio=None):
         _portada(elements, styles, curso, mes_label)
 
         # Datos
-        atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-        retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-        uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
-        celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+        if usa_rango:
+            atrasos = Atraso.objects.filter(alumno__curso=curso)
+            retiros = Retiro.objects.filter(alumno__curso=curso)
+            uniformes = ControlUniforme.objects.filter(alumno__curso=curso)
+            celulares = Celular.objects.filter(alumno__curso=curso)
+            if fecha_desde:
+                atrasos = atrasos.filter(fecha__gte=fecha_desde)
+                retiros = retiros.filter(fecha__gte=fecha_desde)
+                uniformes = uniformes.filter(fecha__gte=fecha_desde)
+                celulares = celulares.filter(fecha__gte=fecha_desde)
+            if fecha_hasta:
+                atrasos = atrasos.filter(fecha__lte=fecha_hasta)
+                retiros = retiros.filter(fecha__lte=fecha_hasta)
+                uniformes = uniformes.filter(fecha__lte=fecha_hasta)
+                celulares = celulares.filter(fecha__lte=fecha_hasta)
+        else:
+            atrasos = Atraso.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+            retiros = Retiro.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+            uniformes = ControlUniforme.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
+            celulares = Celular.objects.filter(alumno__curso=curso, fecha__month=mes, fecha__year=anio)
 
         total_atrasos = atrasos.count()
         atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()

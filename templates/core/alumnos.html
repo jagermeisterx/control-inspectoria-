@@ -66,7 +66,7 @@
 <div class="table-custom">
     <table class="table table-hover mb-0">
         <thead>
-            <tr><th>Apellido</th><th>Nombre</th><th>Curso</th><th>RUT</th><th>Apoderado</th><th>Teléfono</th><th>Reporte</th></tr>
+            <tr><th>Apellido</th><th>Nombre</th><th>Curso</th><th>RUT</th><th>Apoderado</th><th>Teléfono</th><th>Campo</th><th>Reporte</th></tr>
         </thead>
         <tbody>
             {% for al in alumnos %}
@@ -77,10 +77,22 @@
                 <td class="font-monospace small">{{ al.rut }}</td>
                 <td class="small">{{ al.apoderado_nombre }}</td>
                 <td class="small">{{ al.apoderado_telefono }}</td>
+                <td>
+                    {% if user|tiene_rol:'inspector_general,director,profesor' %}
+                    <form method="post" action="{% url 'toggle_campo' al.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm py-0 px-1 {% if al.es_campo %}btn-success{% else %}btn-outline-secondary{% endif %}" title="{% if al.es_campo %}Desmarcar Campo{% else %}Marcar Campo{% endif %}">
+                            {% if al.es_campo %}<i class="bi bi-check-circle-fill"></i> Campo{% else %}<i class="bi bi-circle"></i>{% endif %}
+                        </button>
+                    </form>
+                    {% else %}
+                    {% if al.es_campo %}<span class="badge bg-success">Campo</span>{% else %}<span class="text-muted">-</span>{% endif %}
+                    {% endif %}
+                </td>
                 <td><a href="{% url 'reporte_alumno' al.pk %}" class="btn btn-outline-primary btn-sm py-0 px-1" title="Ver reporte"><i class="bi bi-file-earmark-bar-graph"></i></a></td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">No hay alumnos registrados. <a href="{% url 'importar_alumnos' %}">Importar desde Excel</a></td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">No hay alumnos registrados. <a href="{% url 'importar_alumnos' %}">Importar desde Excel</a></td></tr>
             {% endfor %}
         </tbody>
     </table>

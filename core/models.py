@@ -27,6 +27,7 @@ class Alumno(models.Model):
     apoderado_nombre = models.CharField("Nombre apoderado", max_length=200, blank=True)
     apoderado_telefono = models.CharField("Teléfono apoderado", max_length=15, blank=True)
     apoderado_rut = models.CharField("RUT apoderado", max_length=12, blank=True)
+    es_campo = models.BooleanField("Campo", default=False)
     activo = models.BooleanField(default=True)
     anio = models.PositiveIntegerField("Año escolar", default=2026)
 
@@ -44,6 +45,10 @@ class Alumno(models.Model):
     @property
     def nombre_completo(self):
         return f"{self.nombre} {self.apellido}"
+
+    @property
+    def etiqueta_campo(self):
+        return "Campo" if self.es_campo else ""
 
 
 class Retiro(models.Model):
@@ -97,6 +102,7 @@ class Atraso(models.Model):
     fecha = models.DateField()
     hora = models.TimeField()
     tipo = models.CharField(max_length=10, choices=TIPOS, default="LLEGADA")
+    motivo = models.CharField("Motivo", max_length=50, default="ATRASO", blank=True)
     lugar = models.CharField(max_length=100, blank=True)
     observacion = models.TextField(blank=True)
     registrado_por = models.ForeignKey(
@@ -201,3 +207,22 @@ class VisitaApoderado(models.Model):
 
     def __str__(self):
         return f"{self.destino} - {self.funcionario} ({self.fecha})"
+
+
+class LlamadaApoderado(models.Model):
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="llamadas")
+    fecha = models.DateField(auto_now_add=True)
+    hora = models.TimeField(auto_now_add=True)
+    detalle = models.TextField("Detalle de la llamada")
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha", "-hora"]
+        verbose_name = "Llamada a apoderado"
+        verbose_name_plural = "Llamadas a apoderados"
+
+    def __str__(self):
+        return f"{self.alumno} - {self.fecha} {self.detalle[:50]}"

@@ -9,12 +9,21 @@
         <span class="page-header-meta">{{ mes_nombre }}</span>
     </div>
     <div class="d-flex gap-2">
+        {% if usa_rango %}
+        <a href="{% if curso %}{% url 'exportar_pdf_curso' curso %}{% else %}{% url 'exportar_pdf_todos_cursos' %}{% endif %}?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-pdf"></i> PDF
+        </a>
+        <a href="{% url 'exportar_excel_general' %}?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}&curso={{ curso|urlencode }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        {% else %}
         <a href="{% if curso %}{% url 'exportar_pdf_curso' curso %}{% else %}{% url 'exportar_pdf_todos_cursos' %}{% endif %}?mes={{ mes }}&anio={{ anio }}" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-file-pdf"></i> PDF
         </a>
         <a href="{% url 'exportar_excel_general' %}?mes={{ mes }}&anio={{ anio }}&curso={{ curso|urlencode }}" class="btn btn-outline-success btn-sm">
             <i class="bi bi-file-earmark-excel"></i> Excel
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -28,6 +37,8 @@
             <option value="{{ c }}" {% if c == curso %}selected{% endif %}>{{ c }}</option>
             {% endfor %}
         </select>
+        <div class="vr" style="height:20px"></div>
+        <label class="small fw-semibold text-muted">Mes/Año:</label>
         <select name="mes" class="form-select form-select-sm" style="max-width:130px">
             {% for m, label in meses_opciones %}
             <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ label }}</option>
@@ -38,8 +49,13 @@
             <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
             {% endfor %}
         </select>
+        <div class="vr" style="height:20px"></div>
+        <label class="small fw-semibold text-muted">Rango:</label>
+        <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control form-control-sm" style="max-width:155px" title="Desde">
+        <span class="text-muted">a</span>
+        <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
         <button class="btn btn-sm btn-outline-primary">Filtrar</button>
-        {% if curso %}<a href="{% url 'reporte_general' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+        {% if curso or usa_rango %}<a href="{% url 'reporte_general' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
     </form>
 </div>
 

@@ -1,11 +1,11 @@
 from django import forms
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado
 
 
 class AlumnoForm(forms.ModelForm):
     class Meta:
         model = Alumno
-        fields = ["nombre", "apellido", "curso", "rut", "apoderado_nombre", "apoderado_telefono", "apoderado_rut"]
+        fields = ["nombre", "apellido", "curso", "rut", "apoderado_nombre", "apoderado_telefono", "apoderado_rut", "es_campo"]
         widgets = {
             "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre"}),
             "apellido": forms.TextInput(attrs={"class": "form-control", "placeholder": "Apellido"}),
@@ -14,6 +14,7 @@ class AlumnoForm(forms.ModelForm):
             "apoderado_nombre": forms.TextInput(attrs={"class": "form-control"}),
             "apoderado_telefono": forms.TextInput(attrs={"class": "form-control", "placeholder": "9XXXXXXXX"}),
             "apoderado_rut": forms.TextInput(attrs={"class": "form-control", "placeholder": "12.345.678-9"}),
+            "es_campo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def clean_nombre(self):
@@ -51,11 +52,12 @@ class AtrasoForm(forms.ModelForm):
 
     class Meta:
         model = Atraso
-        fields = ["fecha", "hora", "tipo", "lugar", "observacion"]
+        fields = ["fecha", "hora", "tipo", "motivo", "lugar", "observacion"]
         widgets = {
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "hora": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "tipo": forms.Select(attrs={"class": "form-select"}),
+            "motivo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Motivo del atraso..."}),
             "lugar": forms.TextInput(attrs={"class": "form-control", "placeholder": "Casa, etc."}),
             "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
@@ -113,3 +115,15 @@ class ImportAlumnosForm(forms.Form):
         help_text="Columnas: nombre, apellido, curso, rut (opc.), apoderado (opc.), teléfono (opc.)",
         widget=forms.FileInput(attrs={"class": "form-control", "accept": ".xlsx"}),
     )
+
+
+class LlamadaApoderadoForm(forms.ModelForm):
+    class Meta:
+        model = LlamadaApoderado
+        fields = ["detalle"]
+        widgets = {
+            "detalle": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Ej: Se deja constancia, se amonesta, se suspende..."}),
+        }
+        labels = {
+            "detalle": "Detalle de la llamada",
+        }

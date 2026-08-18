@@ -34,6 +34,10 @@
                 {{ form.tipo }}
             </div>
             <div class="col-md-2">
+                <label class="form-label">Motivo</label>
+                {{ form.motivo }}
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Lugar</label>
                 {{ form.lugar }}
             </div>
@@ -92,4 +96,20 @@
 
 {% block extra_js %}
 <script src="{% static 'js/autocomplete.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var acInput = document.querySelector('.ac-input');
+    var acList = document.querySelector('.ac-list');
+    if (!acInput || !acList) return;
+    acList.addEventListener('click', function(e) {
+        var item = e.target.closest('.ac-item');
+        if (!item) return;
+        var esCampo = item.getAttribute('data-es-campo');
+        var motivoField = document.querySelector('input[name="motivo"]');
+        if (motivoField) {
+            motivoField.value = esCampo === 'true' ? 'CAMPO' : 'ATRASO';
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -78,6 +78,11 @@
                     <i class="bi bi-building"></i> Visitas Apod.
                 </a>
                 {% endif %}
+                {% if user|tiene_rol:'inspector_general,director' %}
+                <a class="nav-link {% if request.resolver_match.url_name == 'llamadas' %}active{% endif %}" href="{% url 'llamadas' %}">
+                    <i class="bi bi-telephone"></i> Llamadas Apod.
+                </a>
+                {% endif %}
             </nav>
 
             <div class="sidebar-section">Reportes</div>
@@ -92,7 +97,7 @@
                     <i class="bi bi-collection"></i> Reporte General
                 </a>
                 {% endif %}
-                {% if user|tiene_rol:'inspector_general' %}
+                {% if user|tiene_rol:'inspector_general,director,profesor' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'alumnos' %}active{% endif %}" href="{% url 'alumnos' %}">
                     <i class="bi bi-people"></i> Alumnos
                 </a>

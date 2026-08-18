@@ -8,10 +8,22 @@
         <span class="text-muted small">{{ alumno.curso }} · RUT: {{ alumno.rut|default:"N/A" }} · Apoderado: {{ alumno.apoderado_nombre|default:"N/A" }} ({{ alumno.apoderado_telefono|default:"s/n" }})</span>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'exportar_pdf_alumno' alumno.pk %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-pdf"></i> PDF</a>
-        <a href="{% url 'exportar_excel_alumno' alumno.pk %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a href="{% url 'exportar_pdf_alumno' alumno.pk %}{% if fecha_desde %}?fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}{% if fecha_desde %}&{% else %}?{% endif %}fecha_hasta={{ fecha_hasta }}{% endif %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-pdf"></i> PDF</a>
+        <a href="{% url 'exportar_excel_alumno' alumno.pk %}{% if fecha_desde %}?fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}{% if fecha_desde %}&{% else %}?{% endif %}fecha_hasta={{ fecha_hasta }}{% endif %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
         <a href="{% url 'reportes' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
     </div>
+</div>
+
+<!-- Filtro rango de fechas -->
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center mb-4">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+        <label class="small fw-semibold text-muted">Filtrar por rango:</label>
+        <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control form-control-sm" style="max-width:155px" title="Desde">
+        <span class="text-muted">a</span>
+        <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
+        <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        {% if fecha_desde or fecha_hasta %}<a href="{% url 'reporte_alumno' alumno.pk %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
 </div>
 
 <!-- Resumen -->

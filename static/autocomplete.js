@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             li.className = 'ac-item';
                             li.textContent = al.text;
                             li.dataset.id = al.id;
+                            li.dataset.esCampo = al.es_campo ? 'true' : 'false';
                             li.addEventListener('click', function() {
                                 input.value = al.text;
                                 hidden.value = al.id;
