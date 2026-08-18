@@ -879,31 +879,6 @@ def cargar_historico(request):
                     return False
                 return str(val).strip().upper() in ("SI", "SÍ", "YES", "TRUE", "1")
 
-            def get_alumno(nombre, apellido, curso):
-                from django.db import IntegrityError
-                nombre = (nombre or "").strip().upper()
-                apellido = (apellido or "").strip().upper()
-                if not nombre or not apellido:
-                    return None
-                try:
-                    al = Alumno.objects.get(
-                        nombre=nombre, apellido=apellido, anio=date.today().year,
-                    )
-                    return al
-                except Alumno.DoesNotExist:
-                    pass
-                try:
-                    al = Alumno.objects.create(
-                        nombre=nombre, apellido=apellido, anio=date.today().year,
-                        curso=curso or "",
-                    )
-                    return al
-                except IntegrityError:
-                    try:
-                        return Alumno.objects.get(nombre=nombre, apellido=apellido, anio=date.today().year)
-                    except Alumno.DoesNotExist:
-                        return None
-
             def registrar_error(hoja, fila_num, fecha, alumno_txt, curso, motivo):
                 errores.append({
                     "hoja": hoja,
@@ -1315,6 +1290,7 @@ def reporte_desde_excel(request):
                 "generado": dt.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "total": len(filas),
                 "con_errores": sum(1 for f in filas if f["errores"]),
+                "validas": len(filas) - sum(1 for f in filas if f["errores"]),
             }
             session_filas = []
             for f in filas:
