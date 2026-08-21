@@ -1113,6 +1113,131 @@ def cargar_historico(request):
     return render(request, "core/cargar_historico.html")
 
 
+# ── Plantilla base para carga histórica ──
+PLANTILLA_HISTORICO = {
+    "Retiros": {
+        "columnas": ["FECHA", "NOMBRE", "APELLIDO", "CURSO", "MOTIVO", "HORA", "PERSONA QUE RETIRA", "RUT QUIEN RETIRA"],
+        "ejemplos": [
+            ["2026-03-10", "PÉREZ", "JUAN", "1° BÁSICO", "ENFERMO/A", "10:30", "MARÍA ROJAS", "12345678-5"],
+            ["2026-03-11", "GONZÁLEZ", "MARÍA", "2° BÁSICO", "TRÁMITES", "12:00", "PEDRO GONZÁLEZ", ""],
+        ],
+        "validaciones": {
+            "E": "ENFERMO/A,CONTROL MÉDICO,PERSONAL,TRÁMITES,ACC. ESCOLAR,LOCOMOCIÓN,FAMILIAR,PERIODO ADAPTACIÓN,DEPORTE,ENTRENAMIENTO,ALMUERZO,VIAJE,TERAPIA,KINESIÓLOGO,OTRO",
+        },
+        "anchos": {"A": 12, "B": 18, "C": 18, "D": 14, "E": 20, "F": 10, "G": 26, "H": 16},
+    },
+    "Atrasos": {
+        "columnas": ["FECHA", "NOMBRE", "APELLIDO", "CURSO", "HORA", "TIPO", "LUGAR"],
+        "ejemplos": [
+            ["2026-03-10", "PÉREZ", "JUAN", "1° BÁSICO", "08:15", "LLEGADA", "PORTERÍA"],
+            ["2026-03-10", "GONZÁLEZ", "MARÍA", "2° BÁSICO", "10:35", "RECREO", "PATIO"],
+        ],
+        "validaciones": {"F": "LLEGADA,RECREO,ALMUERZO"},
+        "anchos": {"A": 12, "B": 18, "C": 18, "D": 14, "E": 10, "F": 12, "G": 20},
+    },
+    "Uniformes": {
+        "columnas": ["FECHA", "NOMBRE", "APELLIDO", "CURSO", "FALTA", "COMPRADO (SI/NO)", "DETALLE", "TELÉFONO CONTACTO", "LLAMADO (SI/NO)"],
+        "ejemplos": [
+            ["2026-03-12", "PÉREZ", "JUAN", "1° BÁSICO", "SIN POLERÓN", "SI", "No traía polerón", "912345678", "SI"],
+            ["2026-03-12", "GONZÁLEZ", "MARÍA", "2° BÁSICO", "SIN UNIFORME", "NO", "", "", "NO"],
+        ],
+        "validaciones": {
+            "E": "SIN UNIFORME,SIN POLERÓN,SIN POLERA NI POLERÓN",
+            "F": "SI,NO",
+            "I": "SI,NO",
+        },
+        "anchos": {"A": 12, "B": 18, "C": 18, "D": 14, "E": 24, "F": 16, "G": 28, "H": 18, "I": 16},
+    },
+    "Celulares": {
+        "columnas": ["FECHA", "NOMBRE", "APELLIDO", "CURSO", "LUGAR ENTREGADO", "RETIRO", "AVISÓ APODERADO (SI/NO)"],
+        "ejemplos": [
+            ["2026-03-13", "PÉREZ", "JUAN", "1° BÁSICO", "DIRECCIÓN", "AL FINAL DEL DÍA", "SI"],
+            ["2026-03-13", "GONZÁLEZ", "MARÍA", "2° BÁSICO", "INSPECTORÍA 1ER PISO", "RETIRA APODERADO", "NO"],
+        ],
+        "validaciones": {
+            "E": "DIRECCIÓN,INSPECTORÍA 1ER PISO,INSPECTORÍA 2DO PISO",
+            "F": "AL FINAL DEL DÍA,RETIRA APODERADO,PENDIENTE",
+            "G": "SI,NO",
+        },
+        "anchos": {"A": 12, "B": 18, "C": 18, "D": 14, "E": 22, "F": 20, "G": 22},
+    },
+    "Visitas": {
+        "columnas": ["FECHA", "HORA", "DESTINO", "FUNCIONARIO"],
+        "ejemplos": [
+            ["2026-03-14", "09:30", "UTP", "CARLA SOTO"],
+            ["2026-03-14", "11:00", "INSPECTORÍA GENERAL", "LUIS HERRERA"],
+        ],
+        "validaciones": {
+            "C": "INSPECTORÍA GENERAL,PIE,UTP,PROFESOR/A,CONV. ESCOLAR,DIRECCIÓN",
+        },
+        "anchos": {"A": 12, "B": 10, "C": 24, "D": 26},
+    },
+}
+
+
+@login_required
+def descargar_plantilla_historico(request):
+    """Genera la planilla base .xlsx con hojas y columnas exactas que espera la carga histórica."""
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    wb = openpyxl.Workbook()
+
+    # Hoja de instrucciones
+    ws_info = wb.active
+    ws_info.title = "Instrucciones"
+    instrucciones = [
+        "PLANILLA BASE — CARGA DE DATOS HISTÓRICOS",
+        "",
+        "1. No renombres ni elimines las hojas: Retiros, Atrasos, Uniformes, Celulares y Visitas.",
+        "2. Mantén el orden exacto de las columnas de cada hoja.",
+        "3. FECHA: formato AAAA-MM-DD (ej: 2026-03-15) o celda con formato de fecha.",
+        "4. HORA: formato HH:MM en 24 horas (ej: 08:30). Si queda vacía se usa 08:00.",
+        "5. NOMBRE y APELLIDO en MAYÚSCULAS, igual que en la planilla de alumnos.",
+        "6. Campos SI/NO: escribe SI o NO.",
+        "7. Usa los menús desplegables donde estén disponibles para evitar errores.",
+        "8. ELIMINA las filas de ejemplo antes de subir el archivo.",
+        "9. Las hojas son opcionales: si no tienes datos de una hoja, déjala solo con el encabezado.",
+    ]
+    for i, texto in enumerate(instrucciones, start=1):
+        c = ws_info.cell(row=i, column=1, value=texto)
+        if i == 1:
+            c.font = Font(bold=True, size=13, color="C8102E")
+    ws_info.column_dimensions["A"].width = 90
+
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="C8102E", end_color="C8102E", fill_type="solid")
+    center = Alignment(horizontal="center", vertical="center")
+
+    for nombre_hoja, cfg in PLANTILLA_HISTORICO.items():
+        ws = wb.create_sheet(nombre_hoja)
+        for col_idx, col_name in enumerate(cfg["columnas"], start=1):
+            cell = ws.cell(row=1, column=col_idx, value=col_name)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center
+        for ejemplo in cfg["ejemplos"]:
+            ws.append(ejemplo)
+        for col_letra, opciones in cfg["validaciones"].items():
+            dv = DataValidation(type="list", formula1=f'"{opciones}"', allow_blank=True)
+            dv.error = "Valor no permitido. Elige una opción de la lista."
+            dv.errorTitle = "Dato inválido"
+            ws.add_data_validation(dv)
+            dv.add(f"{col_letra}2:{col_letra}1000")
+        for col, w in cfg["anchos"].items():
+            ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(
+        buf,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = 'attachment; filename="planilla_base_carga_historica.xlsx"'
+    return resp
+
+
 @login_required
 def descargar_errores_carga(request):
     if not request.user.is_superuser:
