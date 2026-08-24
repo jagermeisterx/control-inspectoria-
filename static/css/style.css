@@ -289,6 +289,24 @@ a:hover { color: var(--primary-dark); }
   border-color: var(--border-strong);
 }
 
+/* Tarjeta clicable (dashboards) */
+.stat-link {
+  display: block;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+.stat-link .stat-card { height: 100%; cursor: pointer; }
+.stat-link:hover .stat-card,
+.stat-link:focus-visible .stat-card {
+  border-color: var(--primary);
+}
+.stat-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-lg);
+}
+
 .stat-icon {
   width: 44px;
   height: 44px;

@@ -24,49 +24,59 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon"><i class="bi bi-door-open"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Retiros</div>
-                <div class="stat-value text-danger">{{ actual.retiros }}</div>
+        <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="bi bi-door-open"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Retiros</div>
+                    <div class="stat-value text-danger">{{ actual.retiros }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-warn"><i class="bi bi-clock-history"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Atrasos</div>
-                <div class="stat-value text-warning">{{ actual.atrasos }}</div>
+        <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-warn"><i class="bi bi-clock-history"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Atrasos</div>
+                    <div class="stat-value text-warning">{{ actual.atrasos }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-violet"><i class="bi bi-person-badge"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Uniformes</div>
-                <div class="stat-value" style="color:var(--violet)">{{ actual.uniformes }}</div>
+        <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-violet"><i class="bi bi-person-badge"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Uniformes</div>
+                    <div class="stat-value" style="color:var(--violet)">{{ actual.uniformes }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-info"><i class="bi bi-phone"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Celulares</div>
-                <div class="stat-value text-info">{{ actual.celulares }}</div>
+        <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-info"><i class="bi bi-phone"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Celulares</div>
+                    <div class="stat-value text-info">{{ actual.celulares }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-warn"><i class="bi bi-building"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Visitas</div>
-                <div class="stat-value">{{ actual.visitas }}</div>
+        <a href="{% url 'reporte_general' %}?mes={{ mes }}&anio={{ anio }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-warn"><i class="bi bi-building"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Visitas</div>
+                    <div class="stat-value">{{ actual.visitas }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 

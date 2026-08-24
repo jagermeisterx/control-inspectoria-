@@ -11,70 +11,95 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="bi bi-door-open"></i>
+        <a href="{% url 'retiros' %}?fecha_desde={{ hoy_iso }}&fecha_hasta={{ hoy_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-door-open"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Retiros hoy</div>
+                    <div class="stat-value text-danger">{{ retiros_hoy }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Retiros hoy</div>
-                <div class="stat-value text-danger">{{ retiros_hoy }}</div>
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-warn">
-                <i class="bi bi-clock-history"></i>
+        <a href="{% url 'atrasos' %}?fecha_desde={{ hoy_iso }}&fecha_hasta={{ hoy_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-warn">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Atrasos hoy</div>
+                    <div class="stat-value text-warning">{{ atrasos_hoy }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Atrasos hoy</div>
-                <div class="stat-value text-warning">{{ atrasos_hoy }}</div>
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="bi bi-door-closed"></i>
+        <a href="{% url 'retiros' %}?fecha_desde={{ mes_inicio_iso }}&fecha_hasta={{ mes_fin_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-door-closed"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Retiros mes</div>
+                    <div class="stat-value text-danger">{{ retiros_mes }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Retiros mes</div>
-                <div class="stat-value text-danger">{{ retiros_mes }}</div>
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-warn">
-                <i class="bi bi-stopwatch"></i>
+        <a href="{% url 'atrasos' %}?fecha_desde={{ mes_inicio_iso }}&fecha_hasta={{ mes_fin_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-warn">
+                    <i class="bi bi-stopwatch"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Atrasos mes</div>
+                    <div class="stat-value text-warning">{{ atrasos_mes }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Atrasos mes</div>
-                <div class="stat-value text-warning">{{ atrasos_mes }}</div>
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-violet">
-                <i class="bi bi-person-badge"></i>
+        <a href="{% url 'uniformes' %}?fecha_desde={{ mes_inicio_iso }}&fecha_hasta={{ mes_fin_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-violet">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Uniformes mes</div>
+                    <div class="stat-value" style="color:var(--violet)">{{ uniformes_mes }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Uniformes mes</div>
-                <div class="stat-value" style="color:var(--violet)">{{ uniformes_mes }}</div>
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon icon-info">
-                <i class="bi bi-building"></i>
+        <a href="{% url 'celulares' %}?fecha_desde={{ mes_inicio_iso }}&fecha_hasta={{ mes_fin_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-info">
+                    <i class="bi bi-phone"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Celulares mes</div>
+                    <div class="stat-value text-info">{{ celulares_mes }}</div>
+                </div>
             </div>
-            <div class="stat-body">
-                <div class="stat-label">Visitas mes</div>
-                <div class="stat-value text-info">{{ visitas_mes }}</div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'visitas' %}?fecha_desde={{ mes_inicio_iso }}&fecha_hasta={{ mes_fin_iso }}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-info">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Visitas mes</div>
+                    <div class="stat-value text-info">{{ visitas_mes }}</div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 

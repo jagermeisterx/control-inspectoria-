@@ -1,4 +1,5 @@
 import io
+import calendar
 from datetime import date, timedelta
 from collections import Counter
 
@@ -100,6 +101,9 @@ def dashboard(request):
         "ultimos_atrasos": ultimos_atrasos,
         "total_alumnos": Alumno.objects.filter(activo=True).count(),
         "mes_nombre": hoy.strftime("%B %Y").capitalize(),
+        "hoy_iso": hoy.isoformat(),
+        "mes_inicio_iso": date(anio, mes, 1).isoformat(),
+        "mes_fin_iso": date(anio, mes, calendar.monthrange(anio, mes)[1]).isoformat(),
     }
     return render(request, "core/dashboard.html", ctx)
 
