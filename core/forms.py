@@ -27,6 +27,25 @@ class AlumnoForm(forms.ModelForm):
     def clean_apellido(self):
         return self.cleaned_data["apellido"].upper().strip()
 
+    def clean(self):
+        cleaned = super().clean()
+        nombre = (cleaned.get("nombre") or "").strip()
+        apellido = (cleaned.get("apellido") or "").strip()
+        if nombre and apellido:
+            anio = self.instance.anio if self.instance and self.instance.anio else 2026
+            existentes = Alumno.objects.filter(
+                nombre__iexact=nombre, apellido__iexact=apellido, anio=anio
+            )
+            if self.instance.pk:
+                existentes = existentes.exclude(pk=self.instance.pk)
+            existente = existentes.first()
+            if existente:
+                raise forms.ValidationError(
+                    f"Este alumno ya existe: {existente.nombre} {existente.apellido} "
+                    f"({existente.curso}, año {anio})."
+                )
+        return cleaned
+
 
 class RetiroForm(forms.ModelForm):
     alumno_texto = forms.CharField(

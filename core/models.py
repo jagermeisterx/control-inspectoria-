@@ -38,6 +38,9 @@ class Alumno(models.Model):
         indexes = [
             models.Index(fields=["nombre", "apellido", "anio"], name="alumno_busqueda_idx"),
         ]
+        constraints = [
+            models.UniqueConstraint(fields=["nombre", "apellido", "anio"], name="alumno_unico_nombre_anio"),
+        ]
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"

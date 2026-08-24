@@ -28,6 +28,7 @@ from .forms import (
     UsuarioForm, UsuarioCrearForm, UsuarioPasswordForm,
 )
 from .roles import es_admin, rol_requerido, tiene_rol, solo_admin, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
+from .cursos_norm import normalizar_curso
 
 
 # ── Errores HTTP ──
@@ -302,7 +303,8 @@ def importar_alumnos(request):
                             continue
                         nombre = str(row[0]).strip().upper() if row[0] else ""
                         apellido = str(row[1]).strip().upper() if len(row) > 1 and row[1] else ""
-                        curso = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+                        curso_raw = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+                        curso = normalizar_curso(curso_raw) or curso_raw
                         rut = str(row[3]).strip() if len(row) > 3 and row[3] else ""
                         apod_nombre = str(row[4]).strip().upper() if len(row) > 4 and row[4] else ""
                         apod_tel = str(row[5]).strip() if len(row) > 5 and row[5] else ""
@@ -1023,7 +1025,12 @@ def cargar_historico(request):
                     return alumnos_existentes[key], nombre, apellido
                 if key in alumnos_nuevos_buf:
                     return alumnos_nuevos_buf[key], nombre, apellido
-                al = Alumno(nombre=nombre, apellido=apellido, anio=year, curso=curso or "")
+                al = Alumno(
+                    nombre=nombre,
+                    apellido=apellido,
+                    anio=year,
+                    curso=normalizar_curso(curso) or (curso or ""),
+                )
                 alumnos_nuevos_buf[key] = al
                 return al, nombre, apellido
 
