@@ -794,6 +794,35 @@ def usuario_password(request, pk):
     })
 
 
+# ── Ayuda / Manual de uso ──
+MANUALES = [
+    ("admin", "Administrador"),
+    ("inspector_general", "Inspector General"),
+    ("inspector", "Inspector"),
+    ("profesor", "Profesor"),
+    ("director", "Director"),
+]
+
+
+@login_required
+def ayuda(request):
+    if request.user.is_superuser:
+        claves = [m[0] for m in MANUALES]
+    elif tiene_rol(request.user, INSPECTOR_GENERAL):
+        claves = ["inspector_general"]
+    elif tiene_rol(request.user, INSPECTOR):
+        claves = ["inspector"]
+    elif tiene_rol(request.user, PROFESOR):
+        claves = ["profesor"]
+    elif tiene_rol(request.user, DIRECTOR):
+        claves = ["director"]
+    else:
+        claves = []
+    titulos = dict(MANUALES)
+    secciones = [{"key": k, "titulo": titulos[k]} for k in claves]
+    return render(request, "core/ayuda.html", {"secciones": secciones})
+
+
 # ── Exportar PDF ──
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_alumno(request, pk):

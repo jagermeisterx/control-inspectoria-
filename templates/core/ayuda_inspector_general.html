@@ -1,0 +1,89 @@
+<section class="man-doc">
+    <h2 class="man-title"><i class="bi bi-shield-check"></i> Inspector General</h2>
+    <p class="man-intro">Rol principal de la inspectoría: registra como el Inspector y además gestiona alumnos, elimina registros, genera informes y supervisa las llamadas a apoderados.</p>
+
+    <div class="man-card">
+        <h3 class="man-h3">Dashboard mensual</h3>
+        <ol class="man-steps">
+            <li>Al ingresar llegas al <strong>Dashboard</strong>.</li>
+            <li>Tarjetas del mes: retiros, atrasos, uniformes, celulares, visitas y totales de hoy.</li>
+            <li>Top 10 de atrasos por alumno, atrasos por curso y retiros por motivo.</li>
+        </ol>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Registro diario</h3>
+        <p class="mb-2">Los flujos son los mismos del rol Inspector:</p>
+        <ul class="man-list">
+            <li><strong>Atrasos/Pases:</strong> alumno → fecha/hora/tipo/lugar. Motivo CAMPO automático si es Campo.</li>
+            <li><strong>Retiros:</strong> alumno → fecha/hora/motivo (15 opciones) → persona que retira.</li>
+            <li><strong>Uniformes:</strong> falta = Sin uniforme · Sin polerón · Sin polera ni polerón.</li>
+            <li><strong>Celulares:</strong> lugar de entrega, modalidad de retiro y aviso al apoderado.</li>
+            <li><strong>Visitas Apod.:</strong> destino, funcionario y observación.</li>
+        </ul>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Gestionar alumnos</h3>
+        <ol class="man-steps">
+            <li><strong>Agregar:</strong> formulario superior con nombre, apellido, curso, RUT y apoderado.</li>
+            <li><strong>Editar:</strong> ícono de lápiz en la fila abre la ventana con todos los datos; guarda cambios.</li>
+            <li><strong>Campo:</strong> botón circular para marcar/desmarcar (afecta el motivo automático de atrasos).</li>
+        </ol>
+        <div class="man-diagram">
+            <div class="man-node">Tabla Alumnos</div>
+            <i class="bi bi-arrow-down man-arrow"></i>
+            <div class="man-node">Lápiz = editar · Círculo = Campo · Gráfico = reporte individual</div>
+        </div>
+        <h4 class="man-sub">Importar Excel</h4>
+        <div class="table-custom mb-2">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Columna</th><th>Contenido</th><th>Obligatorio</th></tr></thead>
+                <tbody>
+                    <tr><td>A</td><td>Nombre (MAYÚSCULAS)</td><td>Sí</td></tr>
+                    <tr><td>B</td><td>Apellido (MAYÚSCULAS)</td><td>Sí</td></tr>
+                    <tr><td>C</td><td>Curso (ej.: 1° BÁSICO)</td><td>Recomendado</td></tr>
+                    <tr><td>D–F</td><td>RUT · Apoderado · Teléfono</td><td>No</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="man-note"><i class="bi bi-info-circle"></i> Si el alumno ya existe (nombre + apellido + año) se actualizan sus datos en vez de duplicarse.</div>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Eliminar registros</h3>
+        <ol class="man-steps">
+            <li>Ícono de papelera en Retiros, Atrasos, Uniformes, Celulares o Visitas.</li>
+            <li>Confirma en el diálogo. La acción es irreversible.</li>
+        </ol>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Informes</h3>
+        <ul class="man-list">
+            <li><strong>Reporte por Alumno:</strong> filtra por curso y nombre; historial completo con PDF/Excel y filtro de fechas.</li>
+            <li><strong>Informe por Curso:</strong> PDF institucional con portada, resumen (incluye faltas de uniforme), atrasos, retiros, uniformes y celulares.</li>
+            <li><strong>Informe Todos los Cursos:</strong> un único PDF del período seleccionado.</li>
+            <li><strong>Reporte desde Excel:</strong> sube la planilla oficial de atrasos (descargable) y obtén el PDF sin guardar datos.</li>
+            <li><strong>Reporte General:</strong> alcance colegio/curso, período mes-año o rango, exportación PDF/Excel.</li>
+        </ul>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Llamadas a apoderados</h3>
+        <div class="man-diagram">
+            <div class="man-node">Alumno acumula 3+ atrasos reales (los CAMPO no cuentan)</div>
+            <i class="bi bi-arrow-down man-arrow"></i>
+            <div class="man-node">Aparece automáticamente en Llamadas Apod.</div>
+            <i class="bi bi-arrow-down man-arrow"></i>
+            <div class="man-node">Registrar llamada con detalle e historial</div>
+        </div>
+    </div>
+
+    <div class="man-card man-card-muted">
+        <h3 class="man-h3">Fuera de tu alcance</h3>
+        <ul class="man-no">
+            <li>Gestión de usuarios y carga histórica (solo Administrador).</li>
+        </ul>
+    </div>
+</section>

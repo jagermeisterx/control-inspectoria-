@@ -18,6 +18,7 @@ urlpatterns = [
     path("alumnos/cargar-historico/plantilla.xlsx", views.descargar_plantilla_historico, name="descargar_plantilla_historico"),
     path("alumnos/cargar-historico/errores/", views.descargar_errores_carga, name="descargar_errores_carga"),
     path("eliminar/<str:modelo>/<int:pk>/", views.eliminar_registro, name="eliminar_registro"),
+    path("ayuda/", views.ayuda, name="ayuda"),
     # Usuarios (solo administrador)
     path("usuarios/", views.usuarios, name="usuarios"),
     path("usuarios/crear/", views.usuario_crear, name="usuario_crear"),

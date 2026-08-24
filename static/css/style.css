@@ -843,5 +843,131 @@ code { background: var(--surface-3); color: var(--text); padding: 2px 6px; borde
 }
 
 .error-hero h1 i { color: var(--warning); margin-right: 0.35rem; }
+
+/* ---------- Manual de uso ---------- */
+.man-tabs { gap: 0.25rem; border-bottom: 2px solid var(--border); }
+.man-tabs .nav-link {
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+  font-weight: 600;
+}
+.man-tabs .nav-link.active {
+  color: var(--primary);
+  background: var(--surface);
+  border-color: var(--border) var(--border) var(--surface);
+  border-bottom: 2px solid var(--surface);
+}
+.man-tabcontent { padding-top: var(--space-4); }
+
+.man-doc { max-width: 880px; counter-reset: mancard; }
+.man-title {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 1.5rem; font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+.man-title i { color: var(--primary); font-size: 1.3rem; }
+.man-intro { color: var(--text-muted); margin-bottom: var(--space-5); }
+
+.man-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-4);
+}
+.man-card-muted { background: var(--surface-2); }
+.man-h3 {
+  display: flex; align-items: center; gap: 0.55rem;
+  font-size: 1rem; font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+.man-h3::before {
+  counter-increment: mancard;
+  content: counter(mancard);
+  flex: 0 0 auto;
+  width: 1.6rem; height: 1.6rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.82rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.man-sub { font-size: 0.92rem; font-weight: 700; color: var(--text); margin: 1rem 0 0.5rem; }
+
+.man-steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+.man-steps li {
+  position: relative;
+  padding-left: 2.2rem;
+  margin-bottom: 0.6rem;
+  counter-increment: step;
+}
+.man-steps li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: -1px;
+  width: 1.55rem; height: 1.55rem;
+  border-radius: 50%;
+  background: var(--surface-3, rgba(200,16,46,0.08));
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: 0.78rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.man-list { margin: 0; padding-left: 1.25rem; }
+.man-list li { margin-bottom: 0.45rem; }
+
+.man-no { list-style: none; padding: 0; margin: 0; }
+.man-no li { margin-bottom: 0.4rem; }
+.man-no li::before { content: "✕"; color: #dc3545; font-weight: 700; margin-right: 0.5rem; }
+
+.man-note {
+  display: flex; align-items: flex-start; gap: 0.55rem;
+  background: var(--surface-2);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.7rem 0.95rem;
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+}
+.man-note i { color: var(--primary); margin-top: 0.12rem; }
+
+.man-diagram {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.15rem;
+  margin: 0.9rem 0 0.4rem;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 0.9rem;
+}
+.man-node {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.88rem;
+  text-align: center;
+  max-width: 540px;
+}
+.man-node-ok { border-color: #198754; color: #198754; font-weight: 600; }
+.man-arrow { color: var(--text-muted); font-size: 0.95rem; line-height: 1.1; }
+
+/* Impresión del manual (Ctrl+P → PDF limpio) */
+@media print {
+  .navbar-app, .sidebar, .page-header button, .loading-overlay,
+  .man-tabs, .alert-dismissible .btn-close { display: none !important; }
+  .app-shell { display: block; }
+  .main-content { max-width: 100%; padding: 0; }
+  body { background: #fff !important; color: #000 !important; }
+  .man-card, .man-node, .man-note, .man-diagram {
+    break-inside: avoid;
+    background: #fff;
+    border-color: #ccc;
+    box-shadow: none;
+  }
+  .man-diagram { background: #fafafa; }
+  .tab-pane { display: block !important; opacity: 1 !important; }
+}
 </content>
 </invoke>

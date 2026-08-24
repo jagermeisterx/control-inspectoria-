@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+{% block title %}Manual de Uso — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-question-circle"></i> Manual de Uso</h1>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+        <i class="bi bi-printer"></i> Imprimir / PDF
+    </button>
+</div>
+
+{% if secciones %}
+<div class="man-wrap">
+    {% if secciones|length > 1 %}
+    <ul class="nav nav-tabs man-tabs" role="tablist">
+        {% for s in secciones %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if forloop.first %}active{% endif %}" data-bs-toggle="tab"
+                    data-bs-target="#man-{{ s.key }}" type="button" role="tab">{{ s.titulo }}</button>
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="tab-content man-tabcontent">
+        {% for s in secciones %}
+        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="man-{{ s.key }}" role="tabpanel">
+            {% include "core/ayuda_"|add:s.key|add:".html" %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {% for s in secciones %}
+    {% include "core/ayuda_"|add:s.key|add:".html" %}
+    {% endfor %}
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-info">No hay un manual disponible para tu perfil. Contacta al administrador.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,64 @@
+<section class="man-doc">
+    <h2 class="man-title"><i class="bi bi-shield-lock"></i> Administrador</h2>
+    <p class="man-intro">Rol de administración total: gestiona usuarios, mantiene los datos maestros (alumnos, carga histórica) y dispone de todos los permisos del Inspector General.</p>
+
+    <div class="man-card">
+        <h3 class="man-h3">Crear un usuario</h3>
+        <ol class="man-steps">
+            <li>Ve a <strong>Configuración → Usuarios</strong> y pulsa <strong>Nuevo usuario</strong>.</li>
+            <li>Completa nombre de usuario (minúsculas), nombre, apellido y correo.</li>
+            <li>Define la contraseña dos veces: mínimo 8 caracteres, no muy común ni solo números.</li>
+            <li>Marca los roles: Inspector General · Inspector · Profesor · Director (combinables).</li>
+            <li>Pulsa <strong>Guardar</strong>. El usuario puede entrar de inmediato.</li>
+        </ol>
+        <div class="man-diagram">
+            <div class="man-node">Nuevo usuario → datos + contraseña</div>
+            <i class="bi bi-arrow-down man-arrow"></i>
+            <div class="man-node">Asignar roles (definen su menú y permisos)</div>
+            <i class="bi bi-arrow-down man-arrow"></i>
+            <div class="man-node man-node-ok">Usuario activo</div>
+        </div>
+        <div class="man-note"><i class="bi bi-exclamation-triangle"></i> Marca "Administrador total" únicamente para otro superusuario.</div>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Editar usuario / restablecer contraseña</h3>
+        <ol class="man-steps">
+            <li><strong>Lápiz:</strong> cambia datos, roles o desactiva el acceso (sin borrar su historial).</li>
+            <li><strong>Llave:</strong> define una nueva contraseña; la anterior queda invalidada al instante.</li>
+        </ol>
+        <div class="man-note"><i class="bi bi-shield-check"></i> Protección: no puedes desactivarte ni quitarte el perfil de administrador a ti mismo.</div>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Importar alumnos desde Excel</h3>
+        <p class="mb-2">Sección <strong>Alumnos → Importar Excel</strong>. Columnas esperadas:</p>
+        <div class="table-custom mb-2">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Columna</th><th>Contenido</th><th>Obligatorio</th></tr></thead>
+                <tbody>
+                    <tr><td>A</td><td>Nombre (MAYÚSCULAS)</td><td>Sí</td></tr>
+                    <tr><td>B</td><td>Apellido (MAYÚSCULAS)</td><td>Sí</td></tr>
+                    <tr><td>C</td><td>Curso (ej.: 1° BÁSICO)</td><td>Recomendado</td></tr>
+                    <tr><td>D–F</td><td>RUT · Apoderado · Teléfono</td><td>No</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="man-note"><i class="bi bi-info-circle"></i> Alumno existente (nombre + apellido + año) se actualiza, no se duplica.</div>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Cargar registro histórico</h3>
+        <ol class="man-steps">
+            <li><strong>Alumnos → Cargar Registro Histórico</strong>: descarga la planilla base (.xlsx) con hojas Retiros, Atrasos, Uniformes, Celulares y Visitas.</li>
+            <li>Respeta formatos: fechas AAAA-MM-DD, horas HH:MM, nombres en MAYÚSCULAS, valores SI/NO.</li>
+            <li>Sube el archivo: los alumnos inexistentes se crean automáticamente.</li>
+            <li>Si hay filas con problemas, descarga el Excel de errores, corrige y vuelve a subir solo esas filas.</li>
+        </ol>
+    </div>
+
+    <div class="man-card">
+        <h3 class="man-h3">Permisos adicionales</h3>
+        <p class="mb-0">También puedes operar todo lo del rol <strong>Inspector General</strong> (pestaña): registros diarios, gestión de alumnos, eliminación de registros e informes. En esta sección Ayuda encuentras los manuales de todos los roles en pestañas.</p>
+    </div>
+</section>
