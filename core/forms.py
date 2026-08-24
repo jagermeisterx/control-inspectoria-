@@ -135,6 +135,7 @@ class LlamadaApoderadoForm(forms.ModelForm):
 
 # ── Gestión de usuarios (solo administrador) ──
 ROLES_CHOICES = [(g, g.replace("_", " ").capitalize()) for g in GRUPOS]
+ROLES_NOMBRES = [g for g, _ in ROLES_CHOICES]
 
 
 class UsuarioForm(forms.ModelForm):
@@ -181,8 +182,18 @@ class UsuarioForm(forms.ModelForm):
         return user
 
     def _asignar_roles(self, user):
-        grupos = Group.objects.filter(name__in=self.cleaned_data.get("roles", []))
-        user.groups.set(grupos)
+        # get_or_create: si el grupo aún no existe en la BD se crea aquí mismo,
+        # evitando que la asignación falle en silencio.
+        nombres_elegidos = set(self.cleaned_data.get("roles", []))
+        for nombre in nombres_elegidos:
+            grupo, _ = Group.objects.get_or_create(name=nombre)
+            user.groups.add(grupo)
+        # Quitar los grupos de rol que ya no están seleccionados
+        quitar = user.groups.filter(name__in=ROLES_NOMBRES).exclude(
+            name__in=nombres_elegidos
+        )
+        if quitar.exists():
+            user.groups.remove(*quitar)
 
 
 class UsuarioCrearForm(UsuarioForm):

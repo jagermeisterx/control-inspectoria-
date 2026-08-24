@@ -34,6 +34,13 @@
     {% endif %}
 </div>
 {% else %}
-<div class="alert alert-info">No hay un manual disponible para tu perfil. Contacta al administrador.</div>
+<div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle fs-5"></i>
+    <div>
+        <strong>Tu cuenta no tiene un rol asignado.</strong><br>
+        Pide al administrador que te asigne un rol desde la sección
+        <strong>Configuración → Usuarios</strong> (botón de lápiz) y vuelve a iniciar sesión.
+    </div>
+</div>
 {% endif %}
 {% endblock %}
