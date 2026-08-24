@@ -45,7 +45,7 @@
                 Descarga esta planilla con los formatos y valores válidos ya configurados y llénala sin errores.
             </p>
 
-            <form method="post" enctype="multipart/form-data" id="formCarga" onsubmit="return mostrarCarga()">
+            <form method="post" enctype="multipart/form-data" id="formCarga" onsubmit="return mostrarCarga()" data-no-global-loader>
                 {% csrf_token %}
                 <input type="file" name="archivo" class="form-control" accept=".xlsx" required id="inputArchivo">
                 <button type="submit" class="btn btn-primary mt-3" id="btnCargar">

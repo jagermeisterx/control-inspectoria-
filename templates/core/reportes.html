@@ -33,7 +33,7 @@
     <input type="date" id="sel-fecha-desde" class="form-control form-control-sm" style="max-width:155px" title="Desde">
     <span class="text-muted">a</span>
     <input type="date" id="sel-fecha-hasta" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
-    <a href="#" id="btn-todos" class="btn btn-danger btn-sm ms-auto"><i class="bi bi-file-pdf"></i> Informe Todos los Cursos</a>
+    <a href="#" id="btn-todos" class="btn btn-danger btn-sm ms-auto" data-export><i class="bi bi-file-pdf"></i> Informe Todos los Cursos</a>
 </div>
 
 <div class="row g-4">
@@ -73,7 +73,7 @@
             <p class="text-muted small">Informe completo con portada, resumen, atrasos, retiros, uniformes y celulares. Formato institucional.</p>
             <div class="d-flex flex-wrap gap-2">
                 {% for curso in cursos %}
-                <a href="#" class="btn btn-outline-danger btn-sm btn-curso" data-curso="{{ curso }}"><i class="bi bi-file-pdf"></i> {{ curso }}</a>
+                <a href="#" class="btn btn-outline-danger btn-sm btn-curso" data-curso="{{ curso }}" data-export><i class="bi bi-file-pdf"></i> {{ curso }}</a>
                 {% empty %}
                 <p class="text-muted small">No hay cursos con alumnos registrados.</p>
                 {% endfor %}

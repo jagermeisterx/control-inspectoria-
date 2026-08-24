@@ -107,6 +107,9 @@
             {% if user.is_superuser %}
             <div class="sidebar-section">Configuración</div>
             <nav class="nav flex-column">
+                <a class="nav-link {% if request.resolver_match.url_name == 'usuarios' or 'usuario_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'usuarios' %}">
+                    <i class="bi bi-person-gear"></i> Usuarios
+                </a>
                 <a class="nav-link" href="{% url 'admin:index' %}">
                     <i class="bi bi-gear"></i> Admin
                 </a>
@@ -130,7 +133,15 @@
         </main>
     </div>
 
+    <div id="global-loading" class="loading-overlay" hidden>
+        <div class="loading-card">
+            <div class="spinner-border" role="status" aria-hidden="true"></div>
+            <div id="global-loading-text" class="fw-semibold mt-2">Cargando…</div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/loading.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -67,7 +67,7 @@
 <div class="table-custom">
     <table class="table table-hover mb-0">
         <thead>
-            <tr><th>Apellido</th><th>Nombre</th><th>Curso</th><th>RUT</th><th>Apoderado</th><th>Teléfono</th><th>Campo</th><th>Reporte</th></tr>
+            <tr><th>Apellido</th><th>Nombre</th><th>Curso</th><th>RUT</th><th>Apoderado</th><th>Teléfono</th><th>Campo</th><th class="text-center">Acciones</th></tr>
         </thead>
         <tbody>
             {% for al in alumnos %}
@@ -90,7 +90,19 @@
                     {% if al.es_campo %}<span class="badge bg-success">Campo</span>{% else %}<span class="text-muted">-</span>{% endif %}
                     {% endif %}
                 </td>
-                <td><a href="{% url 'reporte_alumno' al.pk %}" class="btn btn-outline-primary btn-sm py-0 px-1" title="Ver reporte"><i class="bi bi-file-earmark-bar-graph"></i></a></td>
+                <td class="text-center text-nowrap">
+                    {% if user|tiene_rol:'inspector_general' %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 btn-editar-alumno"
+                            data-bs-toggle="modal" data-bs-target="#modalEditarAlumno"
+                            data-url="{% url 'editar_alumno' al.pk %}"
+                            data-nombre="{{ al.nombre }}" data-apellido="{{ al.apellido }}"
+                            data-curso="{{ al.curso }}" data-rut="{{ al.rut }}"
+                            data-apoderado="{{ al.apoderado_nombre }}" data-telefono="{{ al.apoderado_telefono }}"
+                            data-apoderado-rut="{{ al.apoderado_rut }}" data-campo="{{ al.es_campo|yesno:'1,0' }}"
+                            title="Editar información"><i class="bi bi-pencil-square"></i></button>
+                    {% endif %}
+                    <a href="{% url 'reporte_alumno' al.pk %}" class="btn btn-outline-primary btn-sm py-0 px-1" title="Ver reporte"><i class="bi bi-file-earmark-bar-graph"></i></a>
+                </td>
             </tr>
             {% empty %}
             <tr><td colspan="8" class="text-center text-muted py-4">No hay alumnos registrados. <a href="{% url 'importar_alumnos' %}">Importar desde Excel</a></td></tr>
@@ -98,4 +110,88 @@
         </tbody>
     </table>
 </div>
+
+<!-- Modal editar alumno -->
+<div class="modal fade" id="modalEditarAlumno" tabindex="-1" aria-labelledby="modalEditarAlumnoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="form-editar-alumno" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarAlumnoLabel"><i class="bi bi-pencil-square"></i> Editar Alumno</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" name="nombre" id="edit-nombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apellido *</label>
+                            <input type="text" name="apellido" id="edit-apellido" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Curso</label>
+                            <select name="curso" id="edit-curso" class="form-select">
+                                {% for code, label in cursos %}
+                                <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">RUT</label>
+                            <input type="text" name="rut" id="edit-rut" class="form-control" placeholder="12.345.678-9">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end pb-2">
+                            <div class="form-check">
+                                <input type="checkbox" name="es_campo" id="edit-campo" class="form-check-input" value="on">
+                                <label class="form-check-label" for="edit-campo">Es Campo</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre apoderado</label>
+                            <input type="text" name="apoderado_nombre" id="edit-apoderado" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Teléfono apoderado</label>
+                            <input type="text" name="apoderado_telefono" id="edit-telefono" class="form-control" placeholder="9XXXXXXXX">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">RUT apoderado</label>
+                            <input type="text" name="apoderado_rut" id="edit-apoderado-rut" class="form-control" placeholder="12.345.678-9">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('modalEditarAlumno');
+    var form = document.getElementById('form-editar-alumno');
+    var set = function (id, val) { document.getElementById(id).value = val || ''; };
+    modal.addEventListener('show.bs.modal', function (e) {
+        var b = e.relatedTarget;
+        if (!b) return;
+        form.action = b.dataset.url;
+        set('edit-nombre', b.dataset.nombre);
+        set('edit-apellido', b.dataset.apellido);
+        set('edit-curso', b.dataset.curso);
+        set('edit-rut', b.dataset.rut);
+        set('edit-apoderado', b.dataset.apoderado);
+        set('edit-telefono', b.dataset.telefono);
+        set('edit-apoderado-rut', b.dataset.apoderadoRut);
+        document.getElementById('edit-campo').checked = b.dataset.campo === '1';
+    });
+});
+</script>
 {% endblock %}

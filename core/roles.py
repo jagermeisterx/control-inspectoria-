@@ -3,7 +3,6 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
-
 ADMIN = "admin"
 INSPECTOR_GENERAL = "inspector_general"
 INSPECTOR = "inspector"
@@ -39,3 +38,15 @@ def rol_requerido(*roles):
             return redirect("dashboard")
         return wrapper
     return decorator
+
+
+def solo_admin(view):
+    """Restringe una vista exclusivamente al superusuario."""
+    @wraps(view)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not es_admin(request.user):
+            messages.error(request, "Solo el administrador puede acceder a esta sección.")
+            return redirect("dashboard")
+        return view(request, *args, **kwargs)
+    return wrapper

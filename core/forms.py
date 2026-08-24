@@ -1,5 +1,9 @@
 from django import forms
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.password_validation import validate_password
+
 from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado
+from .roles import GRUPOS
 
 
 class AlumnoForm(forms.ModelForm):
@@ -127,3 +131,117 @@ class LlamadaApoderadoForm(forms.ModelForm):
         labels = {
             "detalle": "Detalle de la llamada",
         }
+
+
+# ── Gestión de usuarios (solo administrador) ──
+ROLES_CHOICES = [(g, g.replace("_", " ").capitalize()) for g in GRUPOS]
+
+
+class UsuarioForm(forms.ModelForm):
+    roles = forms.MultipleChoiceField(
+        choices=ROLES_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Roles asignados",
+    )
+
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email", "is_active", "is_superuser"]
+        labels = {
+            "username": "Nombre de usuario",
+            "first_name": "Nombre",
+            "last_name": "Apellido",
+            "email": "Correo electrónico",
+            "is_active": "Activo (puede iniciar sesión)",
+            "is_superuser": "Administrador total (superusuario)",
+        }
+        widgets = {
+            "username": forms.TextInput(attrs={"class": "form-control"}),
+            "first_name": forms.TextInput(attrs={"class": "form-control"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["is_active"].widget = forms.CheckboxInput(attrs={"class": "form-check-input"})
+        self.fields["is_superuser"].widget = forms.CheckboxInput(attrs={"class": "form-check-input"})
+        if self.instance.pk:
+            self.initial["roles"] = list(self.instance.groups.values_list("name", flat=True))
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip().lower()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            self._asignar_roles(user)
+        return user
+
+    def _asignar_roles(self, user):
+        grupos = Group.objects.filter(name__in=self.cleaned_data.get("roles", []))
+        user.groups.set(grupos)
+
+
+class UsuarioCrearForm(UsuarioForm):
+    password1 = forms.CharField(
+        label="Contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "autocomplete": "new-password"}),
+    )
+    password2 = forms.CharField(
+        label="Confirmar contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "autocomplete": "new-password"}),
+    )
+
+    def clean_password1(self):
+        password1 = self.cleaned_data.get("password1")
+        if password1:
+            validate_password(password1)
+        return password1
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError("Las contraseñas no coinciden.")
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+            self._asignar_roles(user)
+        return user
+
+
+class UsuarioPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label="Nueva contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "autocomplete": "new-password"}),
+    )
+    password2 = forms.CharField(
+        label="Confirmar nueva contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "autocomplete": "new-password"}),
+    )
+
+    def clean_password1(self):
+        password1 = self.cleaned_data.get("password1")
+        if password1:
+            validate_password(password1)
+        return password1
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError("Las contraseñas no coinciden.")
+        return cleaned

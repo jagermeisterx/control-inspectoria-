@@ -12,11 +12,17 @@ urlpatterns = [
     path("llamadas/", views.llamadas, name="llamadas"),
     path("alumnos/", views.alumnos, name="alumnos"),
     path("alumnos/importar/", views.importar_alumnos, name="importar_alumnos"),
+    path("alumnos/<int:pk>/editar/", views.editar_alumno, name="editar_alumno"),
     path("alumnos/toggle-campo/<int:pk>/", views.toggle_campo, name="toggle_campo"),
     path("alumnos/cargar-historico/", views.cargar_historico, name="cargar_historico"),
     path("alumnos/cargar-historico/plantilla.xlsx", views.descargar_plantilla_historico, name="descargar_plantilla_historico"),
     path("alumnos/cargar-historico/errores/", views.descargar_errores_carga, name="descargar_errores_carga"),
     path("eliminar/<str:modelo>/<int:pk>/", views.eliminar_registro, name="eliminar_registro"),
+    # Usuarios (solo administrador)
+    path("usuarios/", views.usuarios, name="usuarios"),
+    path("usuarios/crear/", views.usuario_crear, name="usuario_crear"),
+    path("usuarios/<int:pk>/editar/", views.usuario_editar, name="usuario_editar"),
+    path("usuarios/<int:pk>/password/", views.usuario_password, name="usuario_password"),
     # Reportes
     path("reportes/", views.reportes, name="reportes"),
     path("reportes/general/", views.reporte_general, name="reporte_general"),

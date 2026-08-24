@@ -44,7 +44,7 @@
                 La primera fila se ignora (encabezados). Si un alumno ya existe (mismo nombre + apellido + año), se actualizan sus datos.
                 <br>Cursos válidos: PRE-KINDER, KINDER, 1° BÁSICO ... 8° BÁSICO, I° MEDIO ... IV° MEDIO
             </div>
-            <form id="import-form" method="post" enctype="multipart/form-data">
+            <form id="import-form" method="post" enctype="multipart/form-data" data-no-global-loader>
                 {% csrf_token %}
                 {{ form.archivo }}
                 <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-upload"></i> Importar</button>

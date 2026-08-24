@@ -296,6 +296,7 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
     atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()
     atrasos_recreo = total_atrasos - atrasos_llegada
     total_retiros = retiros.count()
+    total_uniformes = uniformes.count()
 
     # ── Resumen ──
     elements.append(Paragraph(f"Resumen del Curso — {mes_label}", styles["ResumenTitulo"]))
@@ -306,6 +307,7 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
         (atrasos_llegada, "Llegada tardía"),
         (atrasos_recreo, "Recreo/Pasillo"),
         (total_retiros, "Total Retiros"),
+        (total_uniformes, "Faltas Uniforme"),
     ])
     elements.append(stat)
     elements.append(Spacer(1, 3*mm))
@@ -421,15 +423,25 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
         freq_data = [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]
         elements.append(_freq_table("Alumno/a", freq_data))
 
-    # ── 3. Uniformes (si hay) ──
-    total_uniformes = uniformes.count()
-    if total_uniformes > 0:
-        elements.append(Spacer(1, 4*mm))
-        elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
-        elements.append(Spacer(1, 2*mm))
+    # ── 3. Uniformes (siempre visible) ──
+    elements.append(Spacer(1, 4*mm))
+    elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
+    elements.append(Spacer(1, 2*mm))
+
+    if total_uniformes == 0:
         elements.append(Paragraph(
-            f"Se registraron {total_uniformes} situación(es) de uniforme incompleto en el mes de {MESES[mes].lower()}.",
+            f"No se registraron situaciones de uniforme incompleto en el curso durante {mes_label}.",
             styles["Normal9"]))
+    else:
+        elements.append(Paragraph(
+            f"Se registraron {total_uniformes} situación(es) de uniforme incompleto en el curso durante {mes_label}.",
+            styles["Normal9"]))
+        elements.append(Spacer(1, 3*mm))
+
+        # Frecuencia por estudiante
+        elements.append(Paragraph("Faltas por estudiante", styles["SubSeccion"]))
+        freq_u = uniformes.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+        elements.append(_freq_table("Alumno/a", [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq_u]))
         elements.append(Spacer(1, 3*mm))
 
         rows = []
@@ -440,6 +452,7 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
                 u.falta,
                 u.determinacion or "-",
             ])
+        rows.append(["", "TOTAL", f"{total_uniformes} faltas", ""])
         t = _data_table(["Fecha", "Alumno/a", "Falta", "Determinación"], rows,
                         col_widths=[24*mm, 55*mm, 35*mm, 40*mm])
         elements.append(t)
@@ -448,8 +461,7 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
     total_celulares = celulares.count()
     if total_celulares > 0:
         elements.append(Spacer(1, 4*mm))
-        sec_num = 4 if total_uniformes > 0 else 3
-        elements.append(Paragraph(f"{sec_num}.  Retención de Celulares", styles["SeccionTitulo"]))
+        elements.append(Paragraph("4.  Retención de Celulares", styles["SeccionTitulo"]))
         elements.append(Spacer(1, 2*mm))
         elements.append(Paragraph(
             f"Se registraron {total_celulares} caso(s) de retención de celular durante {MESES[mes].lower()}.",
@@ -684,6 +696,7 @@ def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=
         atrasos_llegada = atrasos.filter(tipo="LLEGADA").count()
         atrasos_recreo = total_atrasos - atrasos_llegada
         total_retiros = retiros.count()
+        total_uniformes_curso = uniformes.count()
 
         # Resumen
         elements.append(Paragraph(f"Resumen del Curso — {mes_label}", styles["ResumenTitulo"]))
@@ -692,6 +705,7 @@ def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=
             (atrasos_llegada, "Llegada tardía"),
             (atrasos_recreo, "Recreo/Pasillo"),
             (total_retiros, "Total Retiros"),
+            (total_uniformes_curso, "Faltas Uniforme"),
         ])
         elements.append(stat)
         elements.append(Spacer(1, 3*mm))
@@ -736,19 +750,26 @@ def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=
             freq = retiros.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
             elements.append(_freq_table("Alumno/a", [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq]))
 
-        # Uniformes
-        if uniformes.exists():
-            elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
-            elements.append(Paragraph(f"Se registraron {uniformes.count()} situación(es) de uniforme incompleto.", styles["Normal9"]))
+        # Uniformes (siempre visible)
+        elements.append(Spacer(1, 4*mm))
+        elements.append(Paragraph("3.  Control de Uniformes", styles["SeccionTitulo"]))
+        if total_uniformes_curso == 0:
+            elements.append(Paragraph("No se registraron situaciones de uniforme incompleto en el curso.", styles["Normal9"]))
+        else:
+            elements.append(Paragraph(f"Se registraron {total_uniformes_curso} situación(es) de uniforme incompleto.", styles["Normal9"]))
+            elements.append(Spacer(1, 2*mm))
+            freq_u = uniformes.values("alumno__nombre", "alumno__apellido").annotate(n=Count("id")).order_by("-n")
+            elements.append(_freq_table("Alumno/a", [(f'{f["alumno__nombre"]} {f["alumno__apellido"]}', f["n"]) for f in freq_u]))
+            elements.append(Spacer(1, 2*mm))
             rows = [[u.fecha.strftime("%d/%m/%Y"), u.alumno.nombre_completo, u.falta, u.determinacion or "-"]
                     for u in uniformes.select_related("alumno").order_by("fecha")]
+            rows.append(["", "TOTAL", f"{total_uniformes_curso} faltas", ""])
             elements.append(_data_table(["Fecha", "Alumno/a", "Falta", "Determinación"], rows,
                                         col_widths=[24*mm, 55*mm, 35*mm, 40*mm]))
 
         # Celulares
         if celulares.exists():
-            sec_n = 4 if uniformes.exists() else 3
-            elements.append(Paragraph(f"{sec_n}.  Retención de Celulares", styles["SeccionTitulo"]))
+            elements.append(Paragraph("4.  Retención de Celulares", styles["SeccionTitulo"]))
             elements.append(Paragraph(f"Se registraron {celulares.count()} caso(s) de retención.", styles["Normal9"]))
             rows = [[c.fecha.strftime("%d/%m/%Y"), c.alumno.nombre_completo, c.lugar_entregado, c.retiro]
                     for c in celulares.select_related("alumno").order_by("fecha")]

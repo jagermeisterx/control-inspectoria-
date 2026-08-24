@@ -4,6 +4,8 @@ from collections import Counter
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth import update_session_auth_hash
 from django.contrib import messages
 from django.http import HttpResponse
 from django.db import transaction
@@ -22,8 +24,14 @@ from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
     CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
     LlamadaApoderadoForm,
+    UsuarioForm, UsuarioCrearForm, UsuarioPasswordForm,
 )
-from .roles import es_admin, rol_requerido, tiene_rol, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
+from .roles import es_admin, rol_requerido, tiene_rol, solo_admin, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
+
+
+# ── Errores HTTP ──
+def error_404(request, exception=None):
+    return render(request, "404.html", status=404)
 
 
 # ── Dashboard ──
@@ -238,6 +246,21 @@ def alumnos(request):
         "form": form, "alumnos": qs[:300], "buscar": buscar,
         "curso_filter": curso_filter, "cursos": CURSOS,
     })
+
+
+@rol_requerido(INSPECTOR_GENERAL)
+def editar_alumno(request, pk):
+    alumno = get_object_or_404(Alumno, pk=pk)
+    if request.method != "POST":
+        return redirect("alumnos")
+    form = AlumnoForm(request.POST, instance=alumno)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f"Datos de {alumno.nombre_completo} actualizados.")
+    else:
+        errores = " ".join(f"{field}: {' '.join(errs)}" for field, errs in form.errors.items())
+        messages.error(request, f"No se pudo actualizar el alumno. {errores}")
+    return redirect("alumnos")
 
 
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR, PROFESOR)
@@ -707,6 +730,67 @@ def llamadas(request):
     return render(request, "core/llamadas.html", {
         "alumnos_data": alumnos_data,
         "form_llamada": form_llamada,
+    })
+
+
+# ── Gestión de usuarios (solo administrador) ──
+@solo_admin
+def usuarios(request):
+    buscar = request.GET.get("buscar", "").strip()
+    qs = User.objects.prefetch_related("groups").order_by("username")
+    if buscar:
+        qs = qs.filter(
+            Q(username__icontains=buscar)
+            | Q(first_name__icontains=buscar)
+            | Q(last_name__icontains=buscar)
+            | Q(email__icontains=buscar)
+        )
+    return render(request, "core/usuarios.html", {"usuarios": qs, "buscar": buscar})
+
+
+@solo_admin
+def usuario_crear(request):
+    form = UsuarioCrearForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        messages.success(request, f"Usuario {user.username} creado correctamente.")
+        return redirect("usuarios")
+    return render(request, "core/usuario_form.html", {
+        "form": form, "titulo": "Nuevo usuario",
+    })
+
+
+@solo_admin
+def usuario_editar(request, pk):
+    usuario = get_object_or_404(User, pk=pk)
+    form = UsuarioForm(request.POST or None, instance=usuario)
+    if request.method == "POST" and form.is_valid():
+        if usuario == request.user:
+            # Evita que el admin se bloqueque a sí mismo
+            form.instance.is_active = True
+            form.instance.is_superuser = True
+        user = form.save()
+        messages.success(request, f"Usuario {user.username} actualizado.")
+        return redirect("usuarios")
+    return render(request, "core/usuario_form.html", {
+        "form": form, "titulo": f"Editar: {usuario.get_full_name() or usuario.username}",
+        "usuario_obj": usuario,
+    })
+
+
+@solo_admin
+def usuario_password(request, pk):
+    usuario = get_object_or_404(User, pk=pk)
+    form = UsuarioPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        usuario.set_password(form.cleaned_data["password1"])
+        usuario.save()
+        if usuario == request.user:
+            update_session_auth_hash(request, usuario)
+        messages.success(request, f"Contraseña restablecida para {usuario.username}.")
+        return redirect("usuarios")
+    return render(request, "core/usuario_password.html", {
+        "form": form, "usuario_obj": usuario,
     })
 
 

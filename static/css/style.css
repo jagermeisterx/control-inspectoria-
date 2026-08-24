@@ -780,6 +780,7 @@ a:hover { color: var(--primary-dark); }
 .logout-form button { display: inline-flex; align-items: center; gap: 0.4rem; }
 
 /* ---------- Loading overlay ---------- */
+.loading-overlay[hidden] { display: none !important; }
 .loading-overlay {
   position: fixed;
   inset: 0;
@@ -809,11 +810,38 @@ a:hover { color: var(--primary-dark); }
   color: var(--primary);
 }
 
+.loading-card .fw-semibold { font-size: 0.95rem; }
+
+/* Estado ocupado para botones de exportación (descargas no recargan la página) */
+.btn-loading { pointer-events: none; opacity: 0.75; }
+
 /* ---------- Helpers ---------- */
 .text-muted { color: var(--text-muted) !important; }
 .bg-light { background: var(--surface-2) !important; }
 .border-bottom { border-color: var(--border) !important; }
 hr { border-color: var(--border); }
 code { background: var(--surface-3); color: var(--text); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+
+/* ---------- Error 404 ---------- */
+.error-hero {
+  min-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.error-code {
+  font-size: clamp(5rem, 18vw, 9rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--primary);
+  text-shadow: 0 10px 30px rgba(200, 16, 46, 0.15);
+}
+
+.error-hero h1 i { color: var(--warning); margin-right: 0.35rem; }
 </content>
 </invoke>

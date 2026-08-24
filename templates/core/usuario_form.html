@@ -1,0 +1,90 @@
+{% extends "core/base.html" %}
+{% block title %}{{ titulo }} — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-gear"></i> {{ titulo }}</h1>
+    <a href="{% url 'usuarios' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<div class="form-card" style="max-width:860px">
+    {% if usuario_obj %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted small"><i class="bi bi-person-badge"></i> Usuario: <code>{{ usuario_obj.username }}</code></span>
+        <a href="{% url 'usuario_password' usuario_obj.pk %}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-key"></i> Restablecer contraseña
+        </a>
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">{{ form.username.label }} *</label>
+                {{ form.username }}
+                {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>{% endif %}
+            </div>
+
+            {% if form.password1 %}
+            <div class="col-md-6">
+                <label class="form-label">{{ form.password1.label }} *</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}<div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.password2.label }} *</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}<div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>{% endif %}
+            </div>
+            {% endif %}
+
+            <div class="col-12">
+                <label class="form-label fw-semibold mb-1">Roles asignados</label>
+                <div class="d-flex flex-wrap gap-3 p-2 border rounded" style="border-color:var(--border) !important">
+                    {% for choice in form.roles %}
+                    <div class="form-check mb-0">
+                        {{ choice.tag }}
+                        <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    {{ form.is_active }}
+                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    {{ form.is_superuser }}
+                    <label class="form-check-label" for="{{ form.is_superuser.id_for_label }}">{{ form.is_superuser.label }}</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
+            <a href="{% url 'usuarios' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

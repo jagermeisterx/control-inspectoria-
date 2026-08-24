@@ -1,0 +1,69 @@
+{% extends "core/base.html" %}
+{% load roles %}
+{% block title %}Usuarios — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-gear"></i> Gestión de Usuarios</h1>
+    <a href="{% url 'usuario_crear' %}" class="btn btn-primary btn-sm"><i class="bi bi-person-plus"></i> Nuevo usuario</a>
+</div>
+
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
+        <input type="text" name="buscar" class="form-control form-control-sm" style="max-width:280px"
+               placeholder="Buscar por usuario, nombre o correo..." value="{{ buscar }}">
+        <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+        {% if buscar %}<a href="{% url 'usuarios' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
+    <span class="text-muted small">{{ usuarios|length }} usuarios</span>
+</div>
+
+<div class="table-custom">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Roles</th>
+                <th class="text-center">Estado</th>
+                <th>Último acceso</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td class="fw-semibold font-monospace small">
+                    {{ u.username }}
+                    {% if u.is_superuser %}<span class="badge bg-dark ms-1" title="Superusuario"><i class="bi bi-shield-lock"></i></span>{% endif %}
+                </td>
+                <td>{{ u.get_full_name|default:"—" }}</td>
+                <td class="small">{{ u.email|default:"—" }}</td>
+                <td>
+                    {% for g in u.groups.all %}
+                    <span class="badge badge-curso">{{ g.name|title }}</span>
+                    {% empty %}
+                    <span class="text-muted small">Sin rol</span>
+                    {% endfor %}
+                </td>
+                <td class="text-center">
+                    {% if u.is_active %}
+                    <span class="badge bg-success">Activo</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </td>
+                <td class="small text-muted">{{ u.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</td>
+                <td class="text-center text-nowrap">
+                    <a href="{% url 'usuario_editar' u.pk %}" class="btn btn-outline-secondary btn-sm py-0 px-1" title="Editar usuario"><i class="bi bi-pencil-square"></i></a>
+                    <a href="{% url 'usuario_password' u.pk %}" class="btn btn-outline-warning btn-sm py-0 px-1" title="Restablecer contraseña"><i class="bi bi-key"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No se encontraron usuarios.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
