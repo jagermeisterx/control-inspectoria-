@@ -1,4 +1,4 @@
-from django.db import migrations, models
+from django.db import migrations
 
 import core.dedup
 
@@ -16,12 +16,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # La constraint va en su propia migración (0006): Postgres rechaza
+        # ALTER TABLE sobre una tabla con trigger events pendientes de las
+        # escrituras anteriores dentro de la misma transacción.
         migrations.RunPython(limpiar, migrations.RunPython.noop),
-        migrations.AddConstraint(
-            model_name="alumno",
-            constraint=models.UniqueConstraint(
-                fields=("nombre", "apellido", "anio"),
-                name="alumno_unico_nombre_anio",
-            ),
-        ),
     ]
