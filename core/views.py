@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from collections import Counter
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
@@ -151,7 +152,19 @@ def _list_create(request, model, form_class, template, extra_context=None):
             Q(alumno__nombre__icontains=buscar) | Q(alumno__apellido__icontains=buscar)
         )
 
-    ctx = {"form": form, "registros": qs[:200], "buscar": buscar, "fecha_desde": fecha_desde or "", "fecha_hasta": fecha_hasta or ""}
+    total = qs.count()
+    paginator = Paginator(qs, 50)
+    numero = request.GET.get("pag", 1)
+    try:
+        pagina = paginator.page(numero)
+    except Exception:
+        pagina = paginator.page(1)
+
+    ctx = {
+        "form": form, "registros": pagina, "page_obj": pagina,
+        "total": total, "buscar": buscar,
+        "fecha_desde": fecha_desde or "", "fecha_hasta": fecha_hasta or "",
+    }
     if extra_context:
         ctx.update(extra_context)
     return render(request, template, ctx)
@@ -1048,35 +1061,20 @@ def cargar_historico(request):
             # ── FASE 1: Pre-cargar alumnos y recolectar datos crudos ──
             raw_data = {}  # hoja -> lista de (idx, row_data_dict, al)
 
-            if "Retiros" in wb.sheetnames:
-                rows = []
-                for idx, row in enumerate(wb["Retiros"].iter_rows(min_row=2, values_only=True), start=2):
-                    rows.append((idx, row))
-                raw_data["Retiros"] = rows
+            def _es_fila_vacia(row):
+                return all(v is None or (isinstance(v, str) and not v.strip()) for v in row)
 
-            if "Atrasos" in wb.sheetnames:
-                rows = []
-                for idx, row in enumerate(wb["Atrasos"].iter_rows(min_row=2, values_only=True), start=2):
-                    rows.append((idx, row))
-                raw_data["Atrasos"] = rows
+            def _filas_no_vacias(ws):
+                filas = []
+                for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                    if _es_fila_vacia(row):
+                        continue
+                    filas.append((idx, row))
+                return filas
 
-            if "Uniformes" in wb.sheetnames:
-                rows = []
-                for idx, row in enumerate(wb["Uniformes"].iter_rows(min_row=2, values_only=True), start=2):
-                    rows.append((idx, row))
-                raw_data["Uniformes"] = rows
-
-            if "Celulares" in wb.sheetnames:
-                rows = []
-                for idx, row in enumerate(wb["Celulares"].iter_rows(min_row=2, values_only=True), start=2):
-                    rows.append((idx, row))
-                raw_data["Celulares"] = rows
-
-            if "Visitas" in wb.sheetnames:
-                rows = []
-                for idx, row in enumerate(wb["Visitas"].iter_rows(min_row=2, values_only=True), start=2):
-                    rows.append((idx, row))
-                raw_data["Visitas"] = rows
+            for nombre_hoja in ("Retiros", "Atrasos", "Uniformes", "Celulares", "Visitas"):
+                if nombre_hoja in wb.sheetnames:
+                    raw_data[nombre_hoja] = _filas_no_vacias(wb[nombre_hoja])
 
             # Descubrir todos los alumnos necesarios
             for hoja, rows in raw_data.items():

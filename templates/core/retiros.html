@@ -48,7 +48,7 @@
         <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
         {% if buscar or fecha_desde or fecha_hasta %}<a href="{% url 'retiros' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
     </form>
-    <span class="text-muted small">{{ registros|length }} registros</span>
+    <span class="text-muted small">{{ total }} registros</span>
 </div>
 
 <div class="table-custom">
@@ -79,6 +79,28 @@
         </tbody>
     </table>
 </div>
+
+{% if registros.paginator.num_pages > 1 %}
+<nav class="mt-3" aria-label="Paginación">
+    <ul class="pagination pagination-sm justify-content-center">
+        <li class="page-item {% if not registros.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="?{% if buscar %}buscar={{ buscar|urlencode }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}pag=1">«</a>
+        </li>
+        <li class="page-item {% if not registros.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="?{% if buscar %}buscar={{ buscar|urlencode }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}pag={{ registros.previous_page_number }}">‹</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Página {{ registros.number }} de {{ registros.paginator.num_pages }}</span>
+        </li>
+        <li class="page-item {% if not registros.has_next %}disabled{% endif %}">
+            <a class="page-link" href="?{% if buscar %}buscar={{ buscar|urlencode }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}pag={{ registros.next_page_number }}">›</a>
+        </li>
+        <li class="page-item {% if not registros.has_next %}disabled{% endif %}">
+            <a class="page-link" href="?{% if buscar %}buscar={{ buscar|urlencode }}&{% endif %}{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}pag={{ registros.paginator.num_pages }}">»</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
