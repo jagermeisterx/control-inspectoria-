@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.password_validation import validate_password
 
@@ -77,13 +78,22 @@ class AtrasoForm(forms.ModelForm):
         model = Atraso
         fields = ["fecha", "hora", "tipo", "motivo", "lugar", "observacion"]
         widgets = {
-            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "hora": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
+            "hora": forms.TimeInput(attrs={"class": "form-control", "type": "time"}, format="%H:%M"),
             "tipo": forms.Select(attrs={"class": "form-select"}),
             "motivo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Motivo del atraso..."}),
-            "lugar": forms.TextInput(attrs={"class": "form-control", "placeholder": "Casa, etc."}),
+            "lugar": forms.TextInput(attrs={"class": "form-control", "placeholder": "Casa, Campo, etc.", "list": "lugares_atraso"}),
             "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Por defecto, fecha y hora actuales (hora de Chile, America/Santiago).
+        # Solo se prellena en un formulario nuevo (sin datos POST ni instancia).
+        if not self.instance.pk and not self.data:
+            ahora = timezone.localtime(timezone.now())
+            self.initial.setdefault("fecha", ahora.date())
+            self.initial.setdefault("hora", ahora.time().replace(microsecond=0))
 
 
 class ControlUniformeForm(forms.ModelForm):
