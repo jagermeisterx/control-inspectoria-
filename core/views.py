@@ -21,13 +21,15 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado, ConfiguracionRegistro
 from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
     CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
     LlamadaApoderadoForm,
     UsuarioForm, UsuarioCrearForm, UsuarioPasswordForm,
+    RegistroForm,
 )
+from django.contrib.auth.models import User, Group
 from .roles import es_admin, rol_requerido, tiene_rol, solo_admin, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
 from .cursos_norm import normalizar_curso
 
@@ -35,6 +37,26 @@ from .cursos_norm import normalizar_curso
 # ── Errores HTTP ──
 def error_404(request, exception=None):
     return render(request, "404.html", status=404)
+
+
+# ── Registro público ──
+def registro(request):
+    config = ConfiguracionRegistro.singleton()
+    if not config.registro_habilitado:
+        messages.error(request, "El registro no está habilitado en este momento.")
+        return redirect("login")
+    form = RegistroForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = User.objects.create_user(
+            username=form.cleaned_data["username"],
+            email=form.cleaned_data["email"],
+            password=form.cleaned_data["password1"],
+        )
+        grupo_profesor, _ = Group.objects.get_or_create(name="profesor")
+        user.groups.add(grupo_profesor)
+        messages.success(request, "Registro exitoso. Ahora puedes iniciar sesión.")
+        return redirect("login")
+    return render(request, "registration/registro.html", {"form": form})
 
 
 # ── Dashboard ──

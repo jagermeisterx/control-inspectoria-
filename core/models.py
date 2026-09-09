@@ -212,6 +212,26 @@ class VisitaApoderado(models.Model):
         return f"{self.destino} - {self.funcionario} ({self.fecha})"
 
 
+class ConfiguracionRegistro(models.Model):
+    registro_habilitado = models.BooleanField("Habilitar registro público", default=False)
+
+    class Meta:
+        verbose_name = "Configuración de Registro"
+        verbose_name_plural = "Configuración de Registro"
+
+    def __str__(self):
+        return "Registro habilitado" if self.registro_habilitado else "Registro deshabilitado"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def singleton(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class LlamadaApoderado(models.Model):
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="llamadas")
     fecha = models.DateField(auto_now_add=True)

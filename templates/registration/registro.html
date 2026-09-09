@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registro — Inspectoría Digital</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <script src="{% static 'js/theme.js' %}"></script>
+</head>
+<body>
+    <div class="login-shell">
+        <aside class="login-side">
+            <img src="{% static 'img/logo.jpg' %}" alt="Inspectoría Digital">
+            <h1>Inspectoría Digital</h1>
+            <p>Sistema de Gestión Escolar</p>
+        </aside>
+
+        <section class="login-main">
+            <div class="login-card">
+                <h2>Crear Cuenta</h2>
+                <p class="login-subtitle">Regístrate para comenzar a usar el sistema</p>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2 small">
+                    {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Correo electrónico</label>
+                        <div class="input-icon-group">
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" name="email" class="form-control {% if form.email.errors %}is-invalid{% endif %}" placeholder="tu@correo.com" value="{{ form.email.value|default:'' }}" required>
+                        </div>
+                        {% if form.email.errors %}
+                        <div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de usuario</label>
+                        <div class="input-icon-group">
+                            <i class="bi bi-person"></i>
+                            <input type="text" name="username" class="form-control {% if form.username.errors %}is-invalid{% endif %}" placeholder="Tu usuario" value="{{ form.username.value|default:'' }}" required>
+                        </div>
+                        {% if form.username.errors %}
+                        <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <div class="password-wrap">
+                            <div class="input-icon-group">
+                                <i class="bi bi-lock"></i>
+                                <input id="reg-password1" type="password" name="password1" class="form-control {% if form.password1.errors %}is-invalid{% endif %}" placeholder="Tu contraseña" required>
+                            </div>
+                            <button type="button" class="password-toggle" data-target="reg-password1" aria-label="Mostrar contraseña">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% if form.password1.errors %}
+                        <div class="invalid-feedback d-block">{{ form.password1.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Repetir contraseña</label>
+                        <div class="password-wrap">
+                            <div class="input-icon-group">
+                                <i class="bi bi-lock"></i>
+                                <input id="reg-password2" type="password" name="password2" class="form-control {% if form.password2.errors %}is-invalid{% endif %}" placeholder="Repite tu contraseña" required>
+                            </div>
+                            <button type="button" class="password-toggle" data-target="reg-password2" aria-label="Mostrar contraseña">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% if form.password2.errors %}
+                        <div class="invalid-feedback d-block">{{ form.password2.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-person-plus"></i> Registrarse
+                    </button>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="{% url 'login' %}" class="text-decoration-none" style="font-size: 0.875rem;">
+                        <i class="bi bi-arrow-left"></i> Ya tengo cuenta — Iniciar sesión
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="{% static 'js/login.js' %}"></script>
+</body>
+</html>

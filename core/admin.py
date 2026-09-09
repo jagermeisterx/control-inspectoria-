@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, ConfiguracionRegistro
 
 @admin.register(Alumno)
 class AlumnoAdmin(admin.ModelAdmin):
@@ -32,3 +32,8 @@ class CelularAdmin(admin.ModelAdmin):
 class VisitaApoderadoAdmin(admin.ModelAdmin):
     list_display = ["fecha", "destino", "funcionario", "hora"]
     list_filter = ["destino", "fecha"]
+
+
+@admin.register(ConfiguracionRegistro)
+class ConfiguracionRegistroAdmin(admin.ModelAdmin):
+    list_display = ["registro_habilitado"]
