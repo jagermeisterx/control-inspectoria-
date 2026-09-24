@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         data.forEach(function(al) {
                             var li = document.createElement('div');
                             li.className = 'ac-item';
-                            li.textContent = al.text;
+                            li.innerHTML = '<span>' + al.text + '</span>' +
+                                (al.curso ? ' <span class="badge badge-curso badge-curso-sm">' + al.curso + '</span>' : '');
                             li.dataset.id = al.id;
                             li.dataset.esCampo = al.es_campo ? 'true' : 'false';
                             li.addEventListener('click', function() {
