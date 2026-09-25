@@ -74,6 +74,7 @@
                     <th class="text-center">Atrasos</th>
                     <th class="text-center">Total</th>
                     <th>Tel. apoderado</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -85,9 +86,10 @@
                     <td class="text-center">{% if f.atrasos %}<span class="badge" style="background:var(--warning)">{{ f.atrasos }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
                     <td class="text-center fw-bold">{{ f.total }}</td>
                     <td>{{ f.telefono }}</td>
+                    <td class="text-end"><a href="{% url 'reporte_alumno' f.alumno.pk %}" class="btn btn-outline-primary btn-sm py-0 px-1" title="Ver reporte del alumno"><i class="bi bi-eye"></i></a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="text-center text-muted py-4">Sin faltas registradas en el rango indicado.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">Sin faltas registradas en el rango indicado.</td></tr>
                 {% endfor %}
             </tbody>
             {% if filas %}
@@ -97,6 +99,7 @@
                     <td class="text-center">{{ totales.uniformes }}</td>
                     <td class="text-center">{{ totales.atrasos }}</td>
                     <td class="text-center">{{ totales.total }}</td>
+                    <td></td>
                     <td></td>
                 </tr>
             </tfoot>
