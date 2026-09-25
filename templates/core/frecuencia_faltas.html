@@ -1,0 +1,107 @@
+{% extends "core/base.html" %}
+{% load roles %}
+{% block title %}Frecuencia de Faltas — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-graph-up"></i> Frecuencia de Faltas</h1>
+        <span class="page-header-meta">{{ rango_label }} · {{ curso|default:"Todo el colegio" }}</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'exportar_pdf_frecuencia_faltas' %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-pdf"></i> PDF
+        </a>
+        <a href="{% url 'exportar_excel_frecuencia_faltas' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filtro por curso y rango de fechas -->
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center mb-4">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+        <label class="small fw-semibold text-muted">Alcance:</label>
+        <select name="curso" class="form-select form-select-sm" style="max-width:220px">
+            <option value="">Todo el colegio</option>
+            {% for c in cursos %}
+            <option value="{{ c }}" {% if c == curso %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <div class="vr" style="height:20px"></div>
+        <label class="small fw-semibold text-muted">Rango:</label>
+        <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control form-control-sm" style="max-width:155px" title="Desde">
+        <span class="text-muted">a</span>
+        <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
+        <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        {% if curso or fecha_desde or fecha_hasta %}<a href="{% url 'frecuencia_faltas' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
+</div>
+
+<!-- Totales -->
+<div class="row g-3 mb-4">
+    <div class="col-4 col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ filas|length }}</div>
+            <div class="stat-label">Alumnos con faltas</div>
+        </div>
+    </div>
+    <div class="col-4 col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:#7c3aed">{{ totales.uniformes }}</div>
+            <div class="stat-label">Faltas de uniforme</div>
+        </div>
+    </div>
+    <div class="col-4 col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--warning)">{{ totales.atrasos }}</div>
+            <div class="stat-label">Atrasos</div>
+        </div>
+    </div>
+</div>
+
+<div class="card-custom">
+    <h6 class="fw-bold mb-3">
+        <i class="bi bi-person-lines-fill"></i> Lista de faltas — {{ curso|default:"Todo el colegio" }}
+    </h6>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Alumno/a</th>
+                    <th>Curso</th>
+                    <th class="text-center">Faltas de uniforme</th>
+                    <th class="text-center">Atrasos</th>
+                    <th class="text-center">Total</th>
+                    <th>Tel. apoderado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in filas %}
+                <tr>
+                    <td class="fw-semibold">{{ f.nombre }}</td>
+                    <td>{{ f.curso }}</td>
+                    <td class="text-center">{% if f.uniformes %}<span class="badge" style="background:#7c3aed">{{ f.uniformes }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.atrasos %}<span class="badge" style="background:var(--warning)">{{ f.atrasos }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center fw-bold">{{ f.total }}</td>
+                    <td>{{ f.telefono }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Sin faltas registradas en el rango indicado.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="2">Totales</td>
+                    <td class="text-center">{{ totales.uniformes }}</td>
+                    <td class="text-center">{{ totales.atrasos }}</td>
+                    <td class="text-center">{{ totales.total }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -33,6 +33,7 @@ urlpatterns = [
     path("reportes/desde-excel/", views.reporte_desde_excel, name="reporte_desde_excel"),
     path("reportes/desde-excel/pdf/", views.reporte_desde_excel_pdf, name="reporte_desde_excel_pdf"),
     path("reportes/desde-excel/plantilla.xlsx", views.descargar_plantilla_atrasos, name="descargar_plantilla_atrasos"),
+    path("reportes/frecuencia-faltas/", views.frecuencia_faltas, name="frecuencia_faltas"),
     # Exportaciones
     path("exportar/pdf/alumno/<int:pk>/", views.exportar_pdf_alumno, name="exportar_pdf_alumno"),
     path("exportar/pdf/curso/<str:curso>/", views.exportar_pdf_curso, name="exportar_pdf_curso"),
@@ -40,6 +41,8 @@ urlpatterns = [
     path("exportar/excel/alumno/<int:pk>/", views.exportar_excel_alumno, name="exportar_excel_alumno"),
     path("exportar/excel/curso/<str:curso>/", views.exportar_excel_curso, name="exportar_excel_curso"),
     path("exportar/excel/general/", views.exportar_excel_general, name="exportar_excel_general"),
+    path("exportar/excel/frecuencia-faltas/", views.exportar_excel_frecuencia_faltas, name="exportar_excel_frecuencia_faltas"),
+    path("exportar/pdf/frecuencia-faltas/", views.exportar_pdf_frecuencia_faltas, name="exportar_pdf_frecuencia_faltas"),
     # API
     path("api/alumnos/", views.api_buscar_alumnos, name="api_buscar_alumnos"),
 ]

@@ -96,6 +96,9 @@
                 <a class="nav-link {% if request.resolver_match.url_name == 'reporte_general' %}active{% endif %}" href="{% url 'reporte_general' %}">
                     <i class="bi bi-collection"></i> Reporte General
                 </a>
+                <a class="nav-link {% if request.resolver_match.url_name == 'frecuencia_faltas' %}active{% endif %}" href="{% url 'frecuencia_faltas' %}">
+                    <i class="bi bi-graph-up"></i> Frecuencia de Faltas
+                </a>
                 {% endif %}
                 {% if user|tiene_rol:'inspector_general' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'alumnos' %}active{% endif %}" href="{% url 'alumnos' %}">

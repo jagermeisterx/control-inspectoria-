@@ -788,6 +788,56 @@ def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=
 
 
 # ════════════════════════════════════════════
+#  PDF FRECUENCIA DE FALTAS (atrasos + uniforme)
+# ════════════════════════════════════════════
+
+def generar_pdf_frecuencia_faltas(filas, curso_label, rango_label):
+    """Lista de alumnos con frecuencia de faltas: atrasos y uniforme.
+
+    filas: lista de dicts con keys: nombre, curso, atrasos, uniformes, total, telefono
+    """
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=letter,
+        topMargin=25*mm, bottomMargin=20*mm,
+        leftMargin=18*mm, rightMargin=18*mm,
+    )
+    elements = []
+    styles = _build_styles()
+
+    elements.append(Paragraph("Frecuencia de Faltas", styles["TituloEscuela"]))
+    elements.append(Paragraph(f"{curso_label} — {rango_label}", styles["SubtituloCurso"]))
+    elements.append(Spacer(1, 4*mm))
+
+    total_atrasos = sum(f["atrasos"] for f in filas)
+    total_uniformes = sum(f["uniformes"] for f in filas)
+    elements.append(_stat_table([
+        (len(filas), "Alumnos con faltas"),
+        (total_atrasos, "Total Atrasos"),
+        (total_uniformes, "Faltas Uniforme"),
+    ]))
+    elements.append(Spacer(1, 5*mm))
+
+    if not filas:
+        elements.append(Paragraph("No se registraron faltas en el rango indicado.", styles["Normal9"]))
+    else:
+        rows = [[f["nombre"], f["uniformes"], f["atrasos"], f["telefono"] or ""]
+                for f in filas]
+        elements.append(_data_table(
+            ["Nombre del alumno", "Faltas de uniforme", "Atrasos", "Contacto apoderado"],
+            rows,
+            col_widths=[75*mm, 30*mm, 22*mm, 38*mm],
+        ))
+
+    def on_page(canvas, doc):
+        _header_footer(canvas, doc, f"Frecuencia de Faltas · {curso_label}", rango_label)
+
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+    return buf
+
+
+# ════════════════════════════════════════════
 #  PDF DESDE EXCEL (sin persistir en BD)
 # ════════════════════════════════════════════
 

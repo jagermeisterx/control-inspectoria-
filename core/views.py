@@ -631,6 +631,144 @@ def exportar_excel_general(request):
     return resp
 
 
+# ── Frecuencia de faltas (atrasos + uniformes) ──
+def _parse_fecha(v):
+    try:
+        return date.fromisoformat(v) if v else None
+    except ValueError:
+        return None
+
+
+def _params_frecuencia(request):
+    cursos = list(
+        Alumno.objects.filter(activo=True).exclude(curso="")
+        .values_list("curso", flat=True).distinct().order_by("curso")
+    )
+    curso = request.GET.get("curso", "").strip()
+    if curso not in cursos:
+        curso = ""
+    fecha_desde = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta = request.GET.get("fecha_hasta", "").strip()
+    return {
+        "curso": curso,
+        "cursos": cursos,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "fd": _parse_fecha(fecha_desde),
+        "fh": _parse_fecha(fecha_hasta),
+    }
+
+
+def _filas_frecuencia_faltas(curso, fd, fh):
+    """Conteo por alumno de atrasos (excluye motivo CAMPO) y faltas de uniforme."""
+    qa = Atraso.objects.exclude(motivo="CAMPO")
+    qu = ControlUniforme.objects.all()
+    if curso:
+        qa = qa.filter(alumno__curso=curso)
+        qu = qu.filter(alumno__curso=curso)
+    if fd:
+        qa = qa.filter(fecha__gte=fd)
+        qu = qu.filter(fecha__gte=fd)
+    if fh:
+        qa = qa.filter(fecha__lte=fh)
+        qu = qu.filter(fecha__lte=fh)
+    conteo_a = dict(qa.values_list("alumno_id").annotate(n=Count("id")))
+    conteo_u = dict(qu.values_list("alumno_id").annotate(n=Count("id")))
+
+    alumnos = Alumno.objects.filter(activo=True)
+    if curso:
+        alumnos = alumnos.filter(curso=curso)
+    filas = []
+    for al in alumnos.order_by("apellido", "nombre"):
+        n_a = conteo_a.get(al.id, 0)
+        n_u = conteo_u.get(al.id, 0)
+        if n_a or n_u:
+            filas.append({
+                "alumno": al,
+                "nombre": al.nombre_completo,
+                "curso": al.curso,
+                "atrasos": n_a,
+                "uniformes": n_u,
+                "total": n_a + n_u,
+                "telefono": al.apoderado_telefono,
+            })
+    filas.sort(key=lambda f: (-f["total"], f["nombre"]))
+    return filas
+
+
+def _rango_label_frecuencia(p):
+    if p["fecha_desde"] or p["fecha_hasta"]:
+        return f'{p["fecha_desde"] or "Inicio"} al {p["fecha_hasta"] or "Hoy"}'
+    return "Todo el histórico"
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def frecuencia_faltas(request):
+    p = _params_frecuencia(request)
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+    totales = {
+        "atrasos": sum(f["atrasos"] for f in filas),
+        "uniformes": sum(f["uniformes"] for f in filas),
+    }
+    totales["total"] = totales["atrasos"] + totales["uniformes"]
+    ctx = {
+        **p,
+        "filas": filas,
+        "totales": totales,
+        "rango_label": _rango_label_frecuencia(p),
+    }
+    return render(request, "core/frecuencia_faltas.html", ctx)
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def exportar_excel_frecuencia_faltas(request):
+    p = _params_frecuencia(request)
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Frecuencia de faltas"
+    ws.append(["Nombre del alumno", "Faltas de uniforme", "Atrasos", "Contacto apoderado"])
+    for f in filas:
+        ws.append([f["nombre"], f["uniformes"], f["atrasos"], f["telefono"]])
+
+    from openpyxl.styles import Font, PatternFill
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="C8102E", end_color="C8102E", fill_type="solid")
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    for col, w in {"A": 38, "B": 18, "C": 12, "D": 20}.items():
+        ws.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    label = p["curso"].replace(" ", "_") if p["curso"] else "colegio"
+    resp["Content-Disposition"] = (
+        f'attachment; filename="frecuencia_faltas_{label}_'
+        f'{p["fecha_desde"] or "inicio"}_{p["fecha_hasta"] or "hoy"}.xlsx"'
+    )
+    return resp
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def exportar_pdf_frecuencia_faltas(request):
+    from .pdf_generator import generar_pdf_frecuencia_faltas
+    p = _params_frecuencia(request)
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+    buf = generar_pdf_frecuencia_faltas(
+        filas,
+        p["curso"] or "Todo el colegio",
+        _rango_label_frecuencia(p),
+    )
+    resp = HttpResponse(buf, content_type="application/pdf")
+    label = p["curso"].replace(" ", "_") if p["curso"] else "colegio"
+    resp["Content-Disposition"] = f'attachment; filename="frecuencia_faltas_{label}.pdf"'
+    return resp
+
+
 def _metricas_mes(mes, anio):
     return {
         "retiros": Retiro.objects.filter(fecha__month=mes, fecha__year=anio).count(),
