@@ -32,6 +32,7 @@ from .forms import (
 from django.contrib.auth.models import User, Group
 from .roles import es_admin, rol_requerido, tiene_rol, solo_admin, INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR
 from .cursos_norm import normalizar_curso
+from .dedup import _norm, _tokens, _fuzzy_equiv, _es_genero
 
 
 # ── Errores HTTP ──
@@ -1184,9 +1185,31 @@ def cargar_historico(request):
             # Cache de alumnos: pre-cargar todos los existentes en una sola query
             year = date.today().year
             alumnos_existentes = {}
-            for al in Alumno.objects.filter(anio=year).only("id", "nombre", "apellido"):
+            alumnos_del_anio = list(
+                Alumno.objects.filter(anio=year).only("id", "nombre", "apellido", "curso")
+            )
+            for al in alumnos_del_anio:
                 alumnos_existentes[(al.nombre, al.apellido)] = al
-            alumnos_nuevos_buf = {}
+            match_cache = {}
+
+            def _elegir(corto, pool):
+                """1 candidato por subset de tokens; si no, 1 candidato fuzzy (<=1 edicion).
+                0 o 2+ candidatos -> None (ambiguo/no encontrado: la carga no crea alumnos)."""
+                subset = [
+                    a for a in pool
+                    if len(_tokens(a)) > len(corto) and set(corto) <= set(_tokens(a))
+                ]
+                if len(subset) == 1:
+                    return subset[0]
+                if len(subset) > 1:
+                    return None
+                difusos = [
+                    a for a in pool
+                    if _fuzzy_equiv(corto, _tokens(a)) and not _es_genero(corto, _tokens(a))
+                ]
+                if len(difusos) == 1:
+                    return difusos[0]
+                return None
 
             def get_alumno(nombre, apellido, curso):
                 nombre = (nombre or "").strip().upper()
@@ -1196,27 +1219,21 @@ def cargar_historico(request):
                 key = (nombre, apellido)
                 if key in alumnos_existentes:
                     return alumnos_existentes[key], nombre, apellido
-                if key in alumnos_nuevos_buf:
-                    return alumnos_nuevos_buf[key], nombre, apellido
-                al = Alumno(
-                    nombre=nombre,
-                    apellido=apellido,
-                    anio=year,
-                    curso=normalizar_curso(curso) or (curso or ""),
-                )
-                alumnos_nuevos_buf[key] = al
-                return al, nombre, apellido
+                cache_key = (nombre, apellido, (curso or "").strip().upper())
+                if cache_key in match_cache:
+                    return match_cache[cache_key], nombre, apellido
 
-            def flush_alumnos():
-                if alumnos_nuevos_buf:
-                    Alumno.objects.bulk_create(list(alumnos_nuevos_buf.values()), ignore_conflicts=True)
-                    for al in Alumno.objects.filter(
-                        anio=year,
-                        nombre__in=[n.nombre for n in alumnos_nuevos_buf.values()],
-                        apellido__in=[n.apellido for n in alumnos_nuevos_buf.values()],
-                    ):
-                        alumnos_existentes[(al.nombre, al.apellido)] = al
-                    alumnos_nuevos_buf.clear()
+                corto = _norm(f"{nombre} {apellido}").split()
+                curso_norm = normalizar_curso(curso)
+                pool = [a for a in alumnos_del_anio if not curso_norm or a.curso == curso_norm]
+                al = _elegir(corto, pool)
+                if al is None and curso_norm:
+                    al = _elegir(corto, alumnos_del_anio)  # fallback sin filtro de curso
+
+                match_cache[cache_key] = al
+                if al is not None:
+                    alumnos_existentes[key] = al
+                return al, nombre, apellido
 
             # ── FASE 1: Pre-cargar alumnos y recolectar datos crudos ──
             raw_data = {}  # hoja -> lista de (idx, row_data_dict, al)
@@ -1236,24 +1253,9 @@ def cargar_historico(request):
                 if nombre_hoja in wb.sheetnames:
                     raw_data[nombre_hoja] = _filas_no_vacias(wb[nombre_hoja])
 
-            # Descubrir todos los alumnos necesarios
-            for hoja, rows in raw_data.items():
-                if hoja == "Visitas":
-                    continue
-                for idx, row in rows:
-                    if hoja == "Retiros":
-                        get_alumno(row[1], row[2], row[3])
-                    elif hoja == "Atrasos":
-                        get_alumno(row[1], row[2], row[3])
-                    elif hoja == "Uniformes":
-                        get_alumno(row[1], row[2], row[3])
-                    elif hoja == "Celulares":
-                        get_alumno(row[1], row[2], row[3])
-
-            # Flush: crear TODOS los alumnos nuevos de golpe
-            flush_alumnos()
-
-            # ── FASE 2: Crear registros usando alumnos ya guardados ──
+            # ── FASE 2: Crear registros (la carga NUNCA crea alumnos nuevos) ──
+            omitidos = 0
+            vistos_atrasos = set()
 
             if "Retiros" in raw_data:
                 objs = []
@@ -1265,10 +1267,9 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
-                    al = alumnos_existentes.get(key)
+                    al, _n, _a = get_alumno(row[1], row[2], row[3])
                     if not al:
-                        registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
+                        registrar_error("Retiros", idx, fecha, f"{row[1]} {row[2]}", row[3], "Alumno no encontrado en el sistema (la carga no crea alumnos nuevos)")
                         continue
                     objs.append(Retiro(
                         alumno=al, fecha=fecha, hora=parse_time(row[5]),
@@ -1290,14 +1291,23 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
-                    al = alumnos_existentes.get(key)
+                    al, _n, _a = get_alumno(row[1], row[2], row[3])
                     if not al:
-                        registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
+                        registrar_error("Atrasos", idx, fecha, f"{row[1]} {row[2]}", row[3], "Alumno no encontrado en el sistema (la carga no crea alumnos nuevos)")
                         continue
+                    hora = parse_time(row[4])
+                    tipo = str(row[5] or "LLEGADA")
+                    dup_key = (al.pk, fecha, hora, tipo)
+                    if dup_key in vistos_atrasos or Atraso.objects.filter(
+                        alumno=al, fecha=fecha, hora=hora, tipo=tipo
+                    ).exists():
+                        vistos_atrasos.add(dup_key)
+                        omitidos += 1
+                        continue
+                    vistos_atrasos.add(dup_key)
                     objs.append(Atraso(
-                        alumno=al, fecha=fecha, hora=parse_time(row[4]),
-                        tipo=str(row[5] or "LLEGADA"),
+                        alumno=al, fecha=fecha, hora=hora,
+                        tipo=tipo,
                         lugar=str(row[6] or ""),
                         registrado_por=request.user,
                     ))
@@ -1314,10 +1324,9 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
-                    al = alumnos_existentes.get(key)
+                    al, _n, _a = get_alumno(row[1], row[2], row[3])
                     if not al:
-                        registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
+                        registrar_error("Uniformes", idx, fecha, f"{row[1]} {row[2]}", row[3], "Alumno no encontrado en el sistema (la carga no crea alumnos nuevos)")
                         continue
                     objs.append(ControlUniforme(
                         alumno=al, fecha=fecha,
@@ -1341,10 +1350,9 @@ def cargar_historico(request):
                     if not row[1] or not row[2]:
                         registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "Nombre o apellido vacío")
                         continue
-                    key = ((row[1] or "").strip().upper(), (row[2] or "").strip().upper())
-                    al = alumnos_existentes.get(key)
+                    al, _n, _a = get_alumno(row[1], row[2], row[3])
                     if not al:
-                        registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "No se pudo crear/encontrar alumno")
+                        registrar_error("Celulares", idx, fecha, f"{row[1]} {row[2]}", row[3], "Alumno no encontrado en el sistema (la carga no crea alumnos nuevos)")
                         continue
                     objs.append(Celular(
                         alumno=al, fecha=fecha,
@@ -1386,6 +1394,7 @@ def cargar_historico(request):
                 "errores_count": total_err,
                 "total_ok": total_ok,
                 "tiene_errores": total_err > 0,
+                "omitidos": omitidos,
             }
             return render(request, "core/cargar_historico_resultado.html", ctx)
 

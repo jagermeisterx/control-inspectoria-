@@ -16,6 +16,13 @@
             </div>
             {% endif %}
 
+            {% if omitidos > 0 %}
+            <div class="alert alert-info py-3 mb-3">
+                <i class="bi bi-dash-circle-fill"></i>
+                <strong>{{ omitidos }}</strong> registro(s) ya existían y se omitieron para evitar duplicados.
+            </div>
+            {% endif %}
+
             {% if tiene_errores %}
             <div class="alert alert-warning py-3 mb-3">
                 <i class="bi bi-exclamation-triangle-fill"></i>
