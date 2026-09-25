@@ -650,18 +650,33 @@ def _params_frecuencia(request):
         curso = ""
     fecha_desde = request.GET.get("fecha_desde", "").strip()
     fecha_hasta = request.GET.get("fecha_hasta", "").strip()
+    min_atrasos = request.GET.get("min_atrasos", "").strip()
+    try:
+        min_a = int(min_atrasos)
+        if min_a < 0:
+            min_a = None
+    except ValueError:
+        min_a = None
+    if min_a is None:
+        min_atrasos = ""
     return {
         "curso": curso,
         "cursos": cursos,
         "fecha_desde": fecha_desde,
         "fecha_hasta": fecha_hasta,
+        "min_atrasos": min_atrasos,
+        "min_a": min_a,
         "fd": _parse_fecha(fecha_desde),
         "fh": _parse_fecha(fecha_hasta),
     }
 
 
-def _filas_frecuencia_faltas(curso, fd, fh):
-    """Conteo por alumno de atrasos (excluye motivo CAMPO) y faltas de uniforme."""
+def _filas_frecuencia_faltas(curso, fd, fh, min_a=None):
+    """Conteo por alumno de atrasos (excluye motivo CAMPO) y faltas de uniforme.
+
+    min_a: filtra alumnos con al menos esa cantidad de atrasos.
+    Orden: atrasos descendente (primario), total descendente, luego nombre.
+    """
     qa = Atraso.objects.exclude(motivo="CAMPO")
     qu = ControlUniforme.objects.all()
     if curso:
@@ -693,20 +708,26 @@ def _filas_frecuencia_faltas(curso, fd, fh):
                 "total": n_a + n_u,
                 "telefono": al.apoderado_telefono,
             })
-    filas.sort(key=lambda f: (-f["total"], f["nombre"]))
+    if min_a:
+        filas = [f for f in filas if f["atrasos"] >= min_a]
+    filas.sort(key=lambda f: (-f["atrasos"], -f["total"], f["nombre"]))
     return filas
 
 
 def _rango_label_frecuencia(p):
     if p["fecha_desde"] or p["fecha_hasta"]:
-        return f'{p["fecha_desde"] or "Inicio"} al {p["fecha_hasta"] or "Hoy"}'
-    return "Todo el histórico"
+        label = f'{p["fecha_desde"] or "Inicio"} al {p["fecha_hasta"] or "Hoy"}'
+    else:
+        label = "Todo el histórico"
+    if p.get("min_a"):
+        label += f' · ≥ {p["min_a"]} atrasos'
+    return label
 
 
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
 def frecuencia_faltas(request):
     p = _params_frecuencia(request)
-    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"], p["min_a"])
     totales = {
         "atrasos": sum(f["atrasos"] for f in filas),
         "uniformes": sum(f["uniformes"] for f in filas),
@@ -724,7 +745,7 @@ def frecuencia_faltas(request):
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
 def exportar_excel_frecuencia_faltas(request):
     p = _params_frecuencia(request)
-    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"], p["min_a"])
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -758,7 +779,7 @@ def exportar_excel_frecuencia_faltas(request):
 def exportar_pdf_frecuencia_faltas(request):
     from .pdf_generator import generar_pdf_frecuencia_faltas
     p = _params_frecuencia(request)
-    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"])
+    filas = _filas_frecuencia_faltas(p["curso"], p["fd"], p["fh"], p["min_a"])
     buf = generar_pdf_frecuencia_faltas(
         filas,
         p["curso"] or "Todo el colegio",

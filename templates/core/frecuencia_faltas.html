@@ -33,8 +33,11 @@
         <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="form-control form-control-sm" style="max-width:155px" title="Desde">
         <span class="text-muted">a</span>
         <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
+        <div class="vr" style="height:20px"></div>
+        <label class="small fw-semibold text-muted">Atrasos ≥</label>
+        <input type="number" name="min_atrasos" value="{{ min_atrasos }}" min="0" step="1" class="form-control form-control-sm" style="max-width:80px" title="Mínimo de atrasos">
         <button class="btn btn-sm btn-outline-primary">Filtrar</button>
-        {% if curso or fecha_desde or fecha_hasta %}<a href="{% url 'frecuencia_faltas' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+        {% if curso or fecha_desde or fecha_hasta or min_atrasos %}<a href="{% url 'frecuencia_faltas' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
     </form>
 </div>
 
