@@ -546,6 +546,8 @@ a:hover { color: var(--primary-dark); }
 .badge-llegada { background: var(--warning); color: #fff; }
 .badge-recreo { background: var(--danger); color: #fff; }
 .badge-almuerzo { background: var(--info); color: #fff; }
+.badge-llamada { background: var(--info); color: #fff; }
+.badge-suspension { background: var(--danger); color: #fff; }
 
 .badge-curso-sm {
   font-size: 0.7rem;

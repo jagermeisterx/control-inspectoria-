@@ -22,7 +22,7 @@ from reportlab.platypus import (
 from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate, Frame
 from reportlab.lib.utils import ImageReader
 
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, AccionDisciplinaria
 
 # ── Colores institucionales ──
 ROJO = colors.HexColor("#C8102E")
@@ -544,6 +544,7 @@ def generar_pdf_alumno(alumno):
     atrasos_q = Atraso.objects.filter(alumno=alumno)
     uniformes_q = ControlUniforme.objects.filter(alumno=alumno)
     celulares_q = Celular.objects.filter(alumno=alumno)
+    acciones_q = AccionDisciplinaria.objects.filter(alumno=alumno)
 
     elements.append(Paragraph("Resumen General", styles["ResumenTitulo"]))
     stat = _stat_table([
@@ -551,6 +552,7 @@ def generar_pdf_alumno(alumno):
         (atrasos_q.count(), "Atrasos"),
         (uniformes_q.count(), "Uniformes"),
         (celulares_q.count(), "Celulares"),
+        (acciones_q.count(), "Acciones"),
     ])
     elements.append(stat)
     elements.append(Spacer(1, 4*mm))
@@ -623,8 +625,26 @@ def generar_pdf_alumno(alumno):
                         col_widths=[25*mm, 45*mm, 40*mm, 40*mm])
         elements.append(t)
 
+    # ── Acciones disciplinarias ──
+    if acciones_q.exists():
+        elements.append(Spacer(1, 3*mm))
+        elements.append(Paragraph("Acciones Disciplinarias", styles["SeccionTitulo"]))
+        elements.append(Spacer(1, 2*mm))
+        rows = []
+        for a in acciones_q.order_by("-fecha"):
+            rows.append([
+                a.fecha.strftime("%d/%m/%Y"),
+                a.get_tipo_display(),
+                a.observaciones,
+                str(a.registrado_por or ""),
+            ])
+        t = _data_table(["Fecha", "Tipo", "Observaciones", "Registrado por"], rows,
+                        col_widths=[25*mm, 35*mm, 75*mm, 39*mm])
+        elements.append(t)
+
     # Sin registros
-    if not any([retiros_q.exists(), atrasos_q.exists(), uniformes_q.exists(), celulares_q.exists()]):
+    if not any([retiros_q.exists(), atrasos_q.exists(), uniformes_q.exists(),
+                celulares_q.exists(), acciones_q.exists()]):
         elements.append(Spacer(1, 10*mm))
         elements.append(Paragraph("No se encontraron registros para este alumno.", styles["Normal9Gray"]))
 

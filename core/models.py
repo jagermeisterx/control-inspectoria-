@@ -232,11 +232,16 @@ class ConfiguracionRegistro(models.Model):
         return obj
 
 
-class LlamadaApoderado(models.Model):
-    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="llamadas")
+class AccionDisciplinaria(models.Model):
+    TIPOS = [
+        ("LLAMADA", "Llamada a apoderado"),
+        ("SUSPENSION", "Suspensión"),
+    ]
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="acciones")
+    tipo = models.CharField("Tipo de acción", max_length=20, choices=TIPOS, default="LLAMADA")
     fecha = models.DateField(auto_now_add=True)
     hora = models.TimeField(auto_now_add=True)
-    detalle = models.TextField("Detalle de la llamada")
+    observaciones = models.TextField("Observaciones")
     registrado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -244,8 +249,8 @@ class LlamadaApoderado(models.Model):
 
     class Meta:
         ordering = ["-fecha", "-hora"]
-        verbose_name = "Llamada a apoderado"
-        verbose_name_plural = "Llamadas a apoderados"
+        verbose_name = "Acción disciplinaria"
+        verbose_name_plural = "Acciones disciplinarias"
 
     def __str__(self):
-        return f"{self.alumno} - {self.fecha} {self.detalle[:50]}"
+        return f"{self.alumno} - {self.get_tipo_display()} {self.fecha}"

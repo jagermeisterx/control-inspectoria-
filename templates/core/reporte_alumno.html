@@ -28,28 +28,34 @@
 
 <!-- Resumen -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="stat-card text-center">
             <div class="stat-value text-danger">{{ total_retiros }}</div>
             <div class="stat-label">Retiros</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="stat-card text-center">
             <div class="stat-value" style="color:var(--warning)">{{ total_atrasos }}</div>
             <div class="stat-label">Atrasos</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="stat-card text-center">
             <div class="stat-value" style="color:#7c3aed">{{ total_uniformes }}</div>
             <div class="stat-label">Uniformes</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="stat-card text-center">
             <div class="stat-value" style="color:var(--info)">{{ total_celulares }}</div>
             <div class="stat-label">Celulares</div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--danger)">{{ total_acciones }}</div>
+            <div class="stat-label">Acciones</div>
         </div>
     </div>
 </div>
@@ -120,5 +126,22 @@
         </table>
     </div>
     {% else %}<p class="text-muted small mt-2">Sin celulares requisados.</p>{% endif %}
+</div>
+
+<!-- Acciones disciplinarias -->
+<div class="card-custom mb-3">
+    <h6 class="fw-bold"><i class="bi bi-journal-text" style="color:var(--danger)"></i> Acciones Disciplinarias ({{ total_acciones }})</h6>
+    {% if acciones %}
+    <div class="table-custom mt-2">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Observaciones</th><th>Registrado por</th></tr></thead>
+            <tbody>
+                {% for a in acciones %}
+                <tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>{{ a.hora|time:"H:i" }}</td><td><span class="badge badge-{{ a.tipo|lower }}">{{ a.get_tipo_display }}</span></td><td class="small">{{ a.observaciones|truncatewords:15 }}</td><td>{{ a.registrado_por|default:"—" }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="text-muted small mt-2">Sin acciones disciplinarias registradas.</p>{% endif %}
 </div>
 {% endblock %}

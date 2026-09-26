@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, AccionDisciplinaria
 from .roles import GRUPOS
 
 
@@ -150,15 +150,18 @@ class ImportAlumnosForm(forms.Form):
     )
 
 
-class LlamadaApoderadoForm(forms.ModelForm):
+class AccionDisciplinariaForm(forms.ModelForm):
+    alumno_texto = forms.CharField(
+        label="Alumno/a",
+        widget=forms.TextInput(attrs={"class": "form-control ac-input", "placeholder": "Escribir nombre...", "autocomplete": "off"}),
+    )
+
     class Meta:
-        model = LlamadaApoderado
-        fields = ["detalle"]
+        model = AccionDisciplinaria
+        fields = ["tipo", "observaciones"]
         widgets = {
-            "detalle": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Ej: Se deja constancia, se amonesta, se suspende..."}),
-        }
-        labels = {
-            "detalle": "Detalle de la llamada",
+            "tipo": forms.Select(attrs={"class": "form-select"}),
+            "observaciones": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Detalle de la acción registrada..."}),
         }
 
 

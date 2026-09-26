@@ -78,6 +78,17 @@
             </div>
         </a>
     </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'acciones' %}" class="stat-link">
+            <div class="stat-card">
+                <div class="stat-icon icon-warn"><i class="bi bi-journal-text"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Acciones</div>
+                    <div class="stat-value" style="color:var(--danger)">{{ actual.acciones }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Comparación vs mes anterior -->
@@ -130,6 +141,7 @@
                     <th class="text-center">Uniformes</th>
                     <th class="text-center">Celulares</th>
                     <th class="text-center">Visitas</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -141,6 +153,7 @@
                     <td class="text-center">{{ s.uniformes }}</td>
                     <td class="text-center">{{ s.celulares }}</td>
                     <td class="text-center">{{ s.visitas }}</td>
+                    <td class="text-center">{{ s.acciones }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

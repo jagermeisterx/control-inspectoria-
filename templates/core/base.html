@@ -79,8 +79,8 @@
                 </a>
                 {% endif %}
                 {% if user|tiene_rol:'inspector_general,director' %}
-                <a class="nav-link {% if request.resolver_match.url_name == 'llamadas' %}active{% endif %}" href="{% url 'llamadas' %}">
-                    <i class="bi bi-telephone"></i> Llamadas Apod.
+                <a class="nav-link {% if request.resolver_match.url_name == 'acciones' %}active{% endif %}" href="{% url 'acciones' %}">
+                    <i class="bi bi-journal-text"></i> Acciones Disc.
                 </a>
                 {% endif %}
             </nav>

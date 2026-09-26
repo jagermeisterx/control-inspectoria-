@@ -21,11 +21,11 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, LlamadaApoderado, ConfiguracionRegistro
+from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, AccionDisciplinaria, ConfiguracionRegistro
 from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
     CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
-    LlamadaApoderadoForm,
+    AccionDisciplinariaForm,
     UsuarioForm, UsuarioCrearForm, UsuarioPasswordForm,
     RegistroForm,
 )
@@ -79,6 +79,7 @@ def dashboard(request):
     uniformes_mes = ControlUniforme.objects.filter(fecha__month=mes, fecha__year=anio).count()
     celulares_mes = Celular.objects.filter(fecha__month=mes, fecha__year=anio).count()
     visitas_mes = VisitaApoderado.objects.filter(fecha__month=mes, fecha__year=anio).count()
+    acciones_mes = AccionDisciplinaria.objects.filter(fecha__month=mes, fecha__year=anio).count()
 
     retiros_hoy = Retiro.objects.filter(fecha=hoy).count()
     atrasos_hoy = Atraso.objects.filter(fecha=hoy).count()
@@ -117,6 +118,7 @@ def dashboard(request):
         "uniformes_mes": uniformes_mes,
         "celulares_mes": celulares_mes,
         "visitas_mes": visitas_mes,
+        "acciones_mes": acciones_mes,
         "retiros_hoy": retiros_hoy,
         "atrasos_hoy": atrasos_hoy,
         "top_atrasos": top_atrasos,
@@ -245,6 +247,7 @@ def eliminar_registro(request, modelo, pk):
         "uniforme": ControlUniforme,
         "celular": Celular,
         "visita": VisitaApoderado,
+        "accion": AccionDisciplinaria,
     }
     redir = {
         "retiro": "retiros",
@@ -252,6 +255,7 @@ def eliminar_registro(request, modelo, pk):
         "uniforme": "uniformes",
         "celular": "celulares",
         "visita": "visitas",
+        "accion": "acciones",
     }
     model = modelos.get(modelo)
     if not model:
@@ -400,6 +404,7 @@ def reporte_alumno(request, pk):
     atrs = Atraso.objects.filter(alumno=alumno)
     unifs = ControlUniforme.objects.filter(alumno=alumno)
     cels = Celular.objects.filter(alumno=alumno)
+    accs = AccionDisciplinaria.objects.filter(alumno=alumno)
 
     fecha_desde = request.GET.get("fecha_desde", "")
     fecha_hasta = request.GET.get("fecha_hasta", "")
@@ -408,11 +413,13 @@ def reporte_alumno(request, pk):
         atrs = atrs.filter(fecha__gte=fecha_desde)
         unifs = unifs.filter(fecha__gte=fecha_desde)
         cels = cels.filter(fecha__gte=fecha_desde)
+        accs = accs.filter(fecha__gte=fecha_desde)
     if fecha_hasta:
         retiros = retiros.filter(fecha__lte=fecha_hasta)
         atrs = atrs.filter(fecha__lte=fecha_hasta)
         unifs = unifs.filter(fecha__lte=fecha_hasta)
         cels = cels.filter(fecha__lte=fecha_hasta)
+        accs = accs.filter(fecha__lte=fecha_hasta)
 
     ctx = {
         "alumno": alumno,
@@ -420,10 +427,12 @@ def reporte_alumno(request, pk):
         "atrasos": atrs,
         "uniformes": unifs,
         "celulares": cels,
+        "acciones": accs,
         "total_retiros": retiros.count(),
         "total_atrasos": atrs.count(),
         "total_uniformes": unifs.count(),
         "total_celulares": cels.count(),
+        "total_acciones": accs.count(),
         "fecha_desde": fecha_desde,
         "fecha_hasta": fecha_hasta,
     }
@@ -798,6 +807,7 @@ def _metricas_mes(mes, anio):
         "uniformes": ControlUniforme.objects.filter(fecha__month=mes, fecha__year=anio).count(),
         "celulares": Celular.objects.filter(fecha__month=mes, fecha__year=anio).count(),
         "visitas": VisitaApoderado.objects.filter(fecha__month=mes, fecha__year=anio).count(),
+        "acciones": AccionDisciplinaria.objects.filter(fecha__month=mes, fecha__year=anio).count(),
     }
 
 
@@ -822,7 +832,7 @@ def dashboard_director(request):
     for clave, label in [
         ("retiros", "Retiros"), ("atrasos", "Atrasos"),
         ("uniformes", "Uniformes"), ("celulares", "Celulares"),
-        ("visitas", "Visitas"),
+        ("visitas", "Visitas"), ("acciones", "Acciones"),
     ]:
         a, b = actual[clave], anterior[clave]
         delta = a - b
@@ -893,45 +903,13 @@ def dashboard_director(request):
     return render(request, "core/dashboard_director.html", ctx)
 
 
-# ── Llamadas a Apoderados (alumnos con 3+ atrasos, excluyendo Campo) ──
+# ── Acciones disciplinarias (llamada a apoderado / suspensión) ──
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
-def llamadas(request):
-    form_llamada = LlamadaApoderadoForm()
-
-    alumnos_queryset = (
-        Alumno.objects.filter(activo=True)
-        .annotate(
-            atrasos_reales=Count("atrasos", filter=~Q(atrasos__motivo="CAMPO"))
-        )
-        .filter(atrasos_reales__gte=3)
-        .order_by("-atrasos_reales", "apellido", "nombre")
+def acciones_disciplinarias(request):
+    return _list_create(
+        request, AccionDisciplinaria, AccionDisciplinariaForm,
+        "core/acciones_disciplinarias.html",
     )
-
-    alumnos_data = []
-    for al in alumnos_queryset:
-        llamadas_hist = al.llamadas.all()[:10]
-        alumnos_data.append({
-            "alumno": al,
-            "total_atrasos": al.atrasos_reales,
-            "llamadas": llamadas_hist,
-        })
-
-    if request.method == "POST" and "registrar_llamada" in request.POST:
-        alumno_id = request.POST.get("alumno_id")
-        alumno = get_object_or_404(Alumno, pk=alumno_id)
-        form_llamada = LlamadaApoderadoForm(request.POST)
-        if form_llamada.is_valid():
-            llamada = form_llamada.save(commit=False)
-            llamada.alumno = alumno
-            llamada.registrado_por = request.user
-            llamada.save()
-            messages.success(request, f"Llamada registrada para {alumno.nombre_completo}.")
-            return redirect("llamadas")
-
-    return render(request, "core/llamadas.html", {
-        "alumnos_data": alumnos_data,
-        "form_llamada": form_llamada,
-    })
 
 
 # ── Gestión de usuarios (solo administrador) ──
@@ -1097,6 +1075,13 @@ def exportar_excel_alumno(request, pk):
     ws4.append(["Fecha", "Lugar", "Retiro", "Aviso apoderado"])
     for c in Celular.objects.filter(alumno=alumno):
         ws4.append([c.fecha, c.lugar_entregado, c.retiro, "Sí" if c.aviso_apoderado else "No"])
+
+    # Acciones disciplinarias
+    ws5 = wb.create_sheet("Acciones")
+    ws5.append(["Fecha", "Hora", "Tipo", "Observaciones", "Registrado por"])
+    for a in AccionDisciplinaria.objects.filter(alumno=alumno):
+        ws5.append([a.fecha, a.hora.strftime("%H:%M"), a.get_tipo_display(),
+                    a.observaciones, str(a.registrado_por or "")])
 
     buf = io.BytesIO()
     wb.save(buf)

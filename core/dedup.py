@@ -14,7 +14,27 @@ from core.models import (
     Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado,
 )
 
-RELACIONES = ["retiros", "atrasos", "uniformes", "celulares", "llamadas"]
+RELACIONES = ["retiros", "atrasos", "uniformes", "celulares", "acciones"]
+
+
+def relaciones_disponibles():
+    """Subconjunto de RELACIONES cuya tabla existe en la BD actual.
+
+    La migración 0005 ejecuta el dedup contra modelos en vivo, pero la tabla
+    de AccionDisciplinaria recién se crea en 0008: en una BD nueva todavía no
+    existe y las consultas fallarían.
+    """
+    from django.db import connection
+
+    tablas = set(connection.introspection.table_names())
+    disponibles = []
+    for rel in RELACIONES:
+        try:
+            if Alumno._meta.get_field(rel).related_model._meta.db_table in tablas:
+                disponibles.append(rel)
+        except Exception:
+            continue
+    return disponibles
 
 REGISTROS = [
     (Retiro, ["alumno_id", "fecha", "hora", "motivo", "persona_retira"]),
@@ -47,7 +67,7 @@ def normalizar_cursos_todos(dry_run=True):
 
 def _conteos_por_alumno():
     conteo = {}
-    for rel in RELACIONES:
+    for rel in relaciones_disponibles():
         for fila in Alumno.objects.values("id").annotate(n=Count(rel)):
             conteo.setdefault(fila["id"], {})[rel] = fila["n"]
     return conteo
@@ -57,7 +77,7 @@ def fusionar_alumnos(dry_run=True):
     """Fusiona alumnos con mismo nombre+apellido+año (normalizados).
 
     Conserva: activo > más registros vinculados > id más antiguo.
-    Re-asigna retiros/atrasos/uniformes/celulares/llamadas al conservado,
+    Re-asigna retiros/atrasos/uniformes/celulares/acciones al conservado,
     le fija curso canónico y elimina los duplicados.
     """
     grupos = {}
@@ -76,7 +96,7 @@ def fusionar_alumnos(dry_run=True):
 
         keeper = sorted(lista, key=lambda a: (not a.activo, -registros_de(a), a.id))[0]
         perdedores = [a for a in lista if a.pk != keeper.pk]
-        movidos = {r: sum(conteos.get(a.id, {}).get(r, 0) for a in perdedores) for r in RELACIONES}
+        movidos = {r: sum(conteos.get(a.id, {}).get(r, 0) for a in perdedores) for r in relaciones_disponibles()}
 
         informe.append({
             "keeper": keeper,
@@ -99,7 +119,7 @@ def fusionar_alumnos(dry_run=True):
                     break
         keeper.save(update_fields=["curso"])
 
-        for rel in RELACIONES:
+        for rel in relaciones_disponibles():
             for a in perdedores:
                 getattr(a, rel).update(alumno=keeper)
 
@@ -162,7 +182,7 @@ def fusionar_alumnos_por_subset(dry_run=True, solo_mismo_curso=True):
         keeper = candidatos[0]
         perdedores = [corto]
 
-        movidos = {r: conteos.get(corto.id, {}).get(r, 0) for r in RELACIONES}
+        movidos = {r: conteos.get(corto.id, {}).get(r, 0) for r in relaciones_disponibles()}
         informe.append({
             "keeper": keeper,
             "perdedores": perdedores,
@@ -179,7 +199,7 @@ def fusionar_alumnos_por_subset(dry_run=True, solo_mismo_curso=True):
             keeper.curso = curso_canon
             keeper.save(update_fields=["curso"])
 
-        for rel in RELACIONES:
+        for rel in relaciones_disponibles():
             getattr(corto, rel).update(alumno=keeper)
 
         corto.delete()
@@ -243,7 +263,7 @@ def fusionar_alumnos_fuzzy(dry_run=True):
     el orden), agrupando en componentes conexas por (anio, curso).
 
     Se conserva el registro con MÁS tokens (el de mayor información); a él se
-    le reasignan atrasos/retiros/uniformes/celulares/llamadas y se eliminan los
+    le reasignan atrasos/retiros/uniformes/celulares/acciones y se eliminan los
     sobrantes.
 
     Devuelve (auto, manual):
@@ -309,13 +329,13 @@ def fusionar_alumnos_fuzzy(dry_run=True):
 
             movidos = {
                 r: sum(conteos.get(p.id, {}).get(r, 0) for p in perdedores)
-                for r in RELACIONES
+                for r in relaciones_disponibles()
             }
             auto.append({"keeper": keeper, "perdedores": perdedores, "anio": anio, "movidos": movidos})
 
             if dry_run:
                 continue
-            for rel in RELACIONES:
+            for rel in relaciones_disponibles():
                 for p in perdedores:
                     getattr(p, rel).update(alumno=keeper)
             Alumno.objects.filter(pk__in=[p.pk for p in perdedores]).delete()
