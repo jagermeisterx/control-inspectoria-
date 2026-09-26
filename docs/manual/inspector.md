@@ -14,7 +14,7 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 4. Agrega lugar (ej.: Portón, Patio) y observación si corresponde.
 5. Pulsa **Registrar**. Verás un mensaje verde de confirmación y el registro aparecerá en la tabla.
 
-> **Regla automática:** si el alumno está marcado como **Campo**, el motivo se guarda solo como `CAMPO` (no cuenta como atraso real para las llamadas a apoderados).
+> **Regla automática:** si el alumno está marcado como **Campo**, el motivo se guarda solo como `CAMPO` (no cuenta como atraso real en la Frecuencia de Faltas). Las acciones disciplinarias (llamada a apoderado / suspensión) se registran aparte en **Acciones Disc.** por el Inspector General o el Director.
 
 ## Registrar un retiro anticipado
 1. Ve a **Retiros**.
@@ -50,6 +50,7 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 
 ## Lo que no puedes hacer en este rol
 - Eliminar registros (solo Inspector General).
+- Registrar acciones disciplinarias (solo Inspector General y Director).
 - Ver o editar la ficha de alumnos.
 - Generar informes PDF/Excel.
 

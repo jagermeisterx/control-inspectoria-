@@ -1,15 +1,15 @@
 # Manual de uso — Director
 
-Rol de supervisión. Cuenta con un dashboard comparativo mensual, el seguimiento de llamadas a apoderados y todos los informes del establecimiento.
+Rol de supervisión. Cuenta con un dashboard comparativo mensual, el seguimiento de acciones disciplinarias y todos los informes del establecimiento.
 
 ## Acceso
 1. Ingresa con tu usuario y contraseña.
 2. Llegas directamente al **Dashboard Director**.
-3. Menú lateral: Dashboard Director, Llamadas Apod., Informes y Reporte General.
+3. Menú lateral: Dashboard Director, Acciones Disc., Informes y Reporte General.
 
 ## Dashboard Director
 1. Selecciona **mes y año** con los selectores superiores (hay historial de 12 meses).
-2. La tarjeta de comparación muestra cada indicador (Retiros, Atrasos, Uniformes, Celulares, Visitas) con:
+2. La tarjeta de comparación muestra cada indicador (Retiros, Atrasos, Uniformes, Celulares, Visitas, Acciones) con:
    - Total del mes seleccionado.
    - Total del mes anterior.
    - Variación absoluta y porcentual.
@@ -19,11 +19,11 @@ Rol de supervisión. Cuenta con un dashboard comparativo mensual, el seguimiento
    - **Retiros por motivo**.
    - **Serie de 6 meses** con la evolución de cada indicador.
 
-## Llamadas a apoderados
-1. Ve a **Llamadas Apod.**
-2. El sistema muestra automáticamente a los alumnos con **3 o más atrasos reales**, ordenados de mayor a menor. Los atrasos con motivo `CAMPO` no cuentan para este umbral.
-3. En la tarjeta de cada alumno pulsa **Registrar llamada**, escribe el detalle (se deja constancia, se amonesta, se suspende...) y guarda.
-4. El historial de las últimas 10 llamadas queda visible en cada tarjeta.
+## Acciones disciplinarias
+1. Ve a **Acciones Disc.**
+2. Busca al alumno escribiendo su nombre y selecciónalo de las sugerencias.
+3. Selecciona el **tipo de acción**: *Llamada a apoderado* o *Suspensión*, escribe las observaciones y pulsa **Registrar**.
+4. La acción queda en el listado con filtros por nombre y fechas, en el **informe del alumno** (HTML, PDF y Excel) y en el contador **Acciones mes** del dashboard.
 
 ## Informes
 Igual que el rol Profesor:
