@@ -3,6 +3,8 @@ from django.core.management.base import BaseCommand
 from core.dedup import (
     eliminar_registros_repetidos,
     fusionar_alumnos,
+    fusionar_alumnos_fuzzy,
+    fusionar_alumnos_por_subset,
     normalizar_cursos_todos,
 )
 
@@ -47,7 +49,55 @@ class Command(BaseCommand):
         if total_borrados:
             self.stdout.write(f"   Alumnos a eliminar: {total_borrados}")
 
+        informe2, pendientes = fusionar_alumnos_por_subset(dry_run=not aplicar)
+        self.stdout.write(self.style.HTTP_INFO(
+            f"\n-- Fusión de alumnos cortos -> nombre completo (mismo curso): {len(informe2)} grupos"
+        ))
+        total_borrados2 = 0
+        for g in informe2:
+            perds = ", ".join(str(a.pk) for a in g["perdedores"])
+            movs = ", ".join(f"{k}:{v}" for k, v in g["movidos"].items() if v)
+            total_borrados2 += len(g["perdedores"])
+            self.stdout.write(
+                f"   Conserva [{g['keeper'].pk}] {g['keeper'].nombre_completo} ({g['keeper'].curso})"
+                f" | absorbe [{perds}] año {g['anio']}"
+                + (f" | mueve {movs}" if movs else "")
+            )
+        if total_borrados2:
+            self.stdout.write(f"   Alumnos cortos a eliminar: {total_borrados2}")
+        if pendientes:
+            self.stdout.write(self.style.WARNING(
+                f"   Cortos SIN canónico de su mismo curso (cross-course, revisar a mano): "
+                f"{len(pendientes)} -> {pendientes}"
+            ))
+
         r3 = eliminar_registros_repetidos(dry_run=not aplicar)
+
+        auto5, manual5 = fusionar_alumnos_fuzzy(dry_run=not aplicar)
+        self.stdout.write(self.style.HTTP_INFO(
+            f"\n-- Fusión fuzzy por similitud (typos/variantes, mismo curso): {len(auto5)} grupos"
+        ))
+        total_borrados5 = 0
+        for g in auto5:
+            perds = ", ".join(str(a.pk) for a in g["perdedores"])
+            movs = ", ".join(f"{k}:{v}" for k, v in g["movidos"].items() if v)
+            total_borrados5 += len(g["perdedores"])
+            self.stdout.write(
+                f"   Conserva [{g['keeper'].pk}] {g['keeper'].nombre_completo} ({g['keeper'].curso})"
+                f" | absorbe [{perds}] año {g['anio']}"
+                + (f" | mueve {movs}" if movs else "")
+            )
+        if total_borrados5:
+            self.stdout.write(f"   Alumnos fuzzy a eliminar: {total_borrados5}")
+        if manual5:
+            self.stdout.write(self.style.WARNING(
+                f"   Grupos para REVISIÓN MANUAL (género o igual cantidad de tokens): {len(manual5)}"
+            ))
+            for g in manual5:
+                self.stdout.write(
+                    "   " + " | ".join(f"[{a.pk}] {a.nombre_completo} ({a.curso})" for a in g)
+                )
+
         self.stdout.write(self.style.HTTP_INFO("\n-- Registros idénticos repetidos:"))
         for fila in r3:
             self.stdout.write(f"   {fila['modelo']}: {fila['grupos']} grupos, {fila['borrados']} filas sobrantes")
