@@ -136,6 +136,20 @@ def dashboard(request):
 
 
 # ── Generic list+create pattern ──
+def _q_texto(q, campos):
+    """Filtro de texto por palabras: cada palabra del query debe coincidir en
+    al menos uno de los campos (AND entre tokens, OR dentro de cada token).
+    Permite buscar "primer nombre + primer apellido" ("agustin vega"), que no
+    coincide como frase contra nombre y apellido por separado."""
+    cond = Q()
+    for token in q.split():
+        sub = Q()
+        for campo in campos:
+            sub |= Q(**{f"{campo}__icontains": token})
+        cond &= sub
+    return cond
+
+
 def _list_create(request, model, form_class, template, extra_context=None):
     form = form_class(request.POST or None)
     if request.method == "POST":
@@ -173,9 +187,7 @@ def _list_create(request, model, form_class, template, extra_context=None):
     if fecha_hasta:
         qs = qs.filter(fecha__lte=fecha_hasta)
     if buscar and hasattr(model, "alumno"):
-        qs = qs.filter(
-            Q(alumno__nombre__icontains=buscar) | Q(alumno__apellido__icontains=buscar)
-        )
+        qs = qs.filter(_q_texto(buscar, ("alumno__nombre", "alumno__apellido")))
 
     total = qs.count()
     paginator = Paginator(qs, 50)
@@ -282,7 +294,7 @@ def alumnos(request):
     curso_filter = request.GET.get("curso", "")
     qs = Alumno.objects.filter(activo=True)
     if buscar:
-        qs = qs.filter(Q(nombre__icontains=buscar) | Q(apellido__icontains=buscar))
+        qs = qs.filter(_q_texto(buscar, ("nombre", "apellido")))
     if curso_filter:
         qs = qs.filter(curso=curso_filter)
 
@@ -918,12 +930,9 @@ def usuarios(request):
     buscar = request.GET.get("buscar", "").strip()
     qs = User.objects.prefetch_related("groups").order_by("username")
     if buscar:
-        qs = qs.filter(
-            Q(username__icontains=buscar)
-            | Q(first_name__icontains=buscar)
-            | Q(last_name__icontains=buscar)
-            | Q(email__icontains=buscar)
-        )
+        qs = qs.filter(_q_texto(
+            buscar, ("username", "first_name", "last_name", "email")
+        ))
     return render(request, "core/usuarios.html", {"usuarios": qs, "buscar": buscar})
 
 
@@ -1123,7 +1132,7 @@ def api_buscar_alumnos(request):
         return JsonResponse([], safe=False)
     qs = Alumno.objects.filter(activo=True)
     if q:
-        qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q))
+        qs = qs.filter(_q_texto(q, ("nombre", "apellido")))
     if curso:
         qs = qs.filter(curso=curso)
     qs = qs.order_by("apellido", "nombre")[:30]
