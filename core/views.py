@@ -140,12 +140,13 @@ def _q_texto(q, campos):
     """Filtro de texto por palabras: cada palabra del query debe coincidir en
     al menos uno de los campos (AND entre tokens, OR dentro de cada token).
     Permite buscar "primer nombre + primer apellido" ("agustin vega"), que no
-    coincide como frase contra nombre y apellido por separado."""
+    coincide como frase contra nombre y apellido por separado.
+    Insensible a acentos y mayúsculas (unaccent_icontains)."""
     cond = Q()
     for token in q.split():
         sub = Q()
         for campo in campos:
-            sub |= Q(**{f"{campo}__icontains": token})
+            sub |= Q(**{f"{campo}__unaccent_icontains": token})
         cond &= sub
     return cond
 
