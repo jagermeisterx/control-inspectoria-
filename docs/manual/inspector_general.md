@@ -60,7 +60,7 @@ Ve a **Reportes** (menú Informes):
 
 ## Acciones disciplinarias
 1. Ve a **Acciones Disc.**
-2. Busca al alumno con el autocompletado, selecciona el **tipo de acción** (*Llamada a apoderado* o *Suspensión*) y escribe las observaciones.
+2. Busca al alumno con el autocompletado, selecciona el **tipo de acción** (*Llamada a apoderado*, *Entrevista* o *Suspensión*) y escribe las observaciones.
 3. Pulsa **Registrar**. La acción queda en el listado, en el informe del alumno (HTML/PDF/Excel) y en el contador de acciones de los dashboards. Solo este rol (y Director) puede registrar y eliminar acciones.
 
 ## Consejos generales

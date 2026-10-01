@@ -235,6 +235,7 @@ class ConfiguracionRegistro(models.Model):
 class AccionDisciplinaria(models.Model):
     TIPOS = [
         ("LLAMADA", "Llamada a apoderado"),
+        ("ENTREVISTA", "Entrevista"),
         ("SUSPENSION", "Suspensión"),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="acciones")

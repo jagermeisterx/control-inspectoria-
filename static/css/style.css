@@ -547,6 +547,7 @@ a:hover { color: var(--primary-dark); }
 .badge-recreo { background: var(--danger); color: #fff; }
 .badge-almuerzo { background: var(--info); color: #fff; }
 .badge-llamada { background: var(--info); color: #fff; }
+.badge-entrevista { background: var(--success); color: #fff; }
 .badge-suspension { background: var(--danger); color: #fff; }
 
 .badge-curso-sm {

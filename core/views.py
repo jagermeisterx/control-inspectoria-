@@ -916,7 +916,7 @@ def dashboard_director(request):
     return render(request, "core/dashboard_director.html", ctx)
 
 
-# ── Acciones disciplinarias (llamada a apoderado / suspensión) ──
+# ── Acciones disciplinarias (llamada a apoderado / entrevista / suspensión) ──
 @rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
 def acciones_disciplinarias(request):
     return _list_create(
