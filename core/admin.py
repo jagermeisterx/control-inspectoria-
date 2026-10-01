@@ -25,8 +25,8 @@ class ControlUniformeAdmin(admin.ModelAdmin):
 
 @admin.register(Celular)
 class CelularAdmin(admin.ModelAdmin):
-    list_display = ["alumno", "fecha", "lugar_entregado", "retiro", "aviso_apoderado"]
-    list_filter = ["fecha", "retiro"]
+    list_display = ["alumno", "fecha", "lugar_entregado", "retiro", "estado", "fecha_entrega", "entregado_por", "aviso_apoderado"]
+    list_filter = ["fecha", "retiro", "estado"]
 
 @admin.register(VisitaApoderado)
 class VisitaApoderadoAdmin(admin.ModelAdmin):

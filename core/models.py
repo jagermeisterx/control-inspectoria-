@@ -162,20 +162,35 @@ class Celular(models.Model):
         ("RETIRA APODERADO", "Retira apoderado"),
         ("PENDIENTE", "Pendiente"),
     ]
+    RETIRO_RESUELTOS = [
+        ("AL FINAL DEL DÍA", "Al final del día"),
+        ("RETIRA APODERADO", "Retira apoderado"),
+    ]
+    ESTADOS = [
+        ("EN_DIRECCION", "En poder de la dirección"),
+        ("ENTREGADO", "Entregado"),
+    ]
 
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="celulares")
     fecha = models.DateField()
     lugar_entregado = models.CharField("Lugar de entrega", max_length=30, choices=LUGARES)
-    retiro = models.CharField(max_length=20, choices=RETIRO_CHOICES, default="AL FINAL DEL DÍA")
+    retiro = models.CharField(max_length=20, choices=RETIRO_CHOICES, default="PENDIENTE")
     aviso_apoderado = models.BooleanField("¿Aviso a apoderado?", default=False)
     observacion = models.TextField(blank=True)
     registrado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
+    estado = models.CharField("Estado", max_length=15, choices=ESTADOS, default="EN_DIRECCION")
+    fecha_entrega = models.DateTimeField("Fecha de entrega", null=True, blank=True)
+    entregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="celulares_entregados",
+    )
     creado = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-fecha"]
+        indexes = [models.Index(fields=["estado", "fecha"])]
         verbose_name = "Celular requisado"
         verbose_name_plural = "Celulares requisados"
 

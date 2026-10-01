@@ -219,6 +219,18 @@
     </div>
     <div class="col-lg-6">
         <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="bi bi-phone-vibrate text-danger"></i> Celulares en Dirección</h6>
+            <p class="text-muted small mb-3">Teléfonos requisados hoy, {{ celulares_hoy|date:"d/m/Y" }}.</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-warning text-dark px-3 py-2">{{ cel_hoy_pendientes }} en dirección</span>
+                <span class="badge bg-success px-3 py-2">{{ cel_hoy_entregados }} entregados</span>
+                <span class="badge bg-secondary px-3 py-2">{{ cel_hoy_total }} en total</span>
+            </div>
+            <a href="{% url 'celulares_del_dia' %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-check-lg"></i> Confirmar entregas</a>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-custom">
             <h6 class="fw-bold mb-3"><i class="bi bi-arrow-right-circle text-danger"></i> Enlaces rápidos</h6>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{% url 'reportes' %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-bar-graph"></i> Informes</a>

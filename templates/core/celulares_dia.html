@@ -1,0 +1,80 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load roles %}
+{% block title %}Celulares del día — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-phone-vibrate"></i> Celulares en Dirección</h1>
+    <p class="text-muted small mb-0">Teléfonos requisados que están en poder de la dirección. Al devolver el teléfono, confirma la entrega.</p>
+</div>
+
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
+        <label class="form-label mb-0 small fw-semibold">Fecha</label>
+        <input type="date" name="fecha" class="form-control form-control-sm" style="max-width:170px" value="{{ fecha_iso }}">
+        <button class="btn btn-sm btn-outline-secondary">Ver</button>
+        <a href="{% url 'celulares_del_dia' %}" class="btn btn-sm btn-link">Hoy</a>
+    </form>
+    <span class="text-muted small">
+        {{ total_dia }} registrados · <span class="text-warning-emphasis fw-semibold">{{ total_pendientes }} en dirección</span> · {{ total_entregados }} entregados
+    </span>
+</div>
+
+<div class="table-custom">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Alumno/a</th>
+                <th>Curso</th>
+                <th class="text-center">N° veces</th>
+                <th>Lugar</th>
+                <th>Estado</th>
+                <th>Entregado por</th>
+                <th class="text-end">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
+                <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
+                <td class="text-center fw-bold">{{ conteo_celulares|get_item:r.alumno_id|default:0 }}</td>
+                <td>{{ r.lugar_entregado }}</td>
+                <td><span class="badge badge-{{ r.estado|lower }}">{{ r.get_estado_display }}</span></td>
+                <td>
+                    {% if r.estado == "ENTREGADO" %}
+                        <span class="small">{{ r.entregado_por|default:"—" }}</span>
+                        {% if r.fecha_entrega %}<span class="text-muted small d-block">{{ r.fecha_entrega|date:"d/m/Y H:i" }}</span>{% endif %}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if r.estado == "EN_DIRECCION" %}
+                    <form method="post" action="{% url 'entregar_celular' r.pk %}" class="d-inline-flex gap-1 align-items-center" onsubmit="return confirm('¿Confirmar que se entregó el teléfono de {{ r.alumno.nombre_completo }}?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="fecha" value="{{ fecha_iso }}">
+                        <select name="retiro" class="form-select form-select-sm" style="width:auto" required>
+                            {% for valor, etiqueta in retiro_opciones %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Entregar</button>
+                    </form>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill text-success" title="Entregado"></i>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No hay celulares requisados en esta fecha.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3 d-flex justify-content-end">
+    <a href="{% url 'celulares' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list-ul"></i> Ver todos los celulares</a>
+</div>
+{% endblock %}

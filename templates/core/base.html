@@ -68,9 +68,14 @@
                     <i class="bi bi-person-badge"></i> Uniformes
                 </a>
                 {% endif %}
-                {% if user|tiene_rol:'inspector_general,inspector,profesor' %}
+                {% if user|tiene_rol:'inspector_general,inspector,profesor,director' %}
                 <a class="nav-link {% if request.resolver_match.url_name == 'celulares' %}active{% endif %}" href="{% url 'celulares' %}">
                     <i class="bi bi-phone"></i> Celulares
+                </a>
+                {% endif %}
+                {% if user|tiene_rol:'director' %}
+                <a class="nav-link {% if request.resolver_match.url_name == 'celulares_del_dia' %}active{% endif %}" href="{% url 'celulares_del_dia' %}">
+                    <i class="bi bi-phone-vibrate"></i> Celulares del día
                 </a>
                 {% endif %}
                 {% if user|tiene_rol:'inspector_general,inspector' %}

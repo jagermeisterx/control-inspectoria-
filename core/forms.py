@@ -119,14 +119,25 @@ class CelularForm(forms.ModelForm):
 
     class Meta:
         model = Celular
-        fields = ["fecha", "lugar_entregado", "retiro", "aviso_apoderado", "observacion"]
+        fields = ["fecha", "lugar_entregado", "aviso_apoderado", "observacion"]
         widgets = {
             "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "lugar_entregado": forms.Select(attrs={"class": "form-select"}),
-            "retiro": forms.Select(attrs={"class": "form-select"}),
             "aviso_apoderado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+
+class CelularEntregaForm(forms.ModelForm):
+    retiro = forms.ChoiceField(
+        label="Modalidad de retiro",
+        choices=Celular.RETIRO_RESUELTOS,
+        widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
+    )
+
+    class Meta:
+        model = Celular
+        fields = ["retiro"]
 
 
 class VisitaApoderadoForm(forms.ModelForm):

@@ -475,9 +475,10 @@ def generar_pdf_curso(curso, mes=None, anio=None, fecha_desde=None, fecha_hasta=
                 c.alumno.nombre_completo,
                 c.lugar_entregado,
                 c.retiro,
+                c.get_estado_display(),
             ])
-        t = _data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro"], rows,
-                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm])
+        t = _data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro", "Estado"], rows,
+                        col_widths=[22*mm, 48*mm, 32*mm, 34*mm, 32*mm])
         elements.append(t)
 
     # ── Build ──
@@ -619,10 +620,11 @@ def generar_pdf_alumno(alumno):
                 c.fecha.strftime("%d/%m/%Y"),
                 c.lugar_entregado,
                 c.retiro,
+                c.get_estado_display(),
                 "Sí" if c.aviso_apoderado else "No",
             ])
-        t = _data_table(["Fecha", "Lugar", "Retiro", "Aviso"], rows,
-                        col_widths=[25*mm, 45*mm, 40*mm, 40*mm])
+        t = _data_table(["Fecha", "Lugar", "Retiro", "Estado", "Aviso"], rows,
+                        col_widths=[24*mm, 38*mm, 34*mm, 34*mm, 20*mm])
         elements.append(t)
 
     # ── Acciones disciplinarias ──
@@ -791,10 +793,11 @@ def generar_pdf_todos_cursos(mes=None, anio=None, fecha_desde=None, fecha_hasta=
         if celulares.exists():
             elements.append(Paragraph("4.  Retención de Celulares", styles["SeccionTitulo"]))
             elements.append(Paragraph(f"Se registraron {celulares.count()} caso(s) de retención.", styles["Normal9"]))
-            rows = [[c.fecha.strftime("%d/%m/%Y"), c.alumno.nombre_completo, c.lugar_entregado, c.retiro]
+            rows = [[c.fecha.strftime("%d/%m/%Y"), c.alumno.nombre_completo, c.lugar_entregado, c.retiro,
+                     c.get_estado_display()]
                     for c in celulares.select_related("alumno").order_by("fecha")]
-            elements.append(_data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro"], rows,
-                                        col_widths=[24*mm, 55*mm, 35*mm, 40*mm]))
+            elements.append(_data_table(["Fecha", "Alumno/a", "Lugar entregado", "Retiro", "Estado"], rows,
+                                        col_widths=[22*mm, 48*mm, 32*mm, 34*mm, 32*mm]))
 
         if i < len(cursos) - 1:
             elements.append(PageBreak())

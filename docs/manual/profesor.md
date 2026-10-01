@@ -11,9 +11,11 @@ Rol de consulta y apoyo. Puede registrar requisas de celular y generar los infor
 1. Ve a **Celulares**.
 2. Escribe el nombre del alumno (mínimo 2 letras) y selecciónalo de las sugerencias.
 3. Completa la fecha.
-4. Selecciona dónde queda entregado (Dirección, Inspectoría 1er piso, Inspectoría 2do piso) y la modalidad de retiro (Al final del día, Retira apoderado, Pendiente).
-5. Marca **Aviso a apoderado** si ya se contactó al apoderado.
+4. Selecciona dónde queda entregado: Dirección, Inspectoría 1er piso o Inspectoría 2do piso.
+5. Marca **Aviso a apoderado** si ya se contactó al apoderado, y agrega una observación si hace falta.
 6. Pulsa **Registrar**: el mensaje verde confirma y el registro aparece en la tabla con el conteo acumulado del alumno.
+
+El registro queda automáticamente como **En poder de la dirección** y con la modalidad de retiro en *Pendiente*: no tienes que decidir eso. Cuando la dirección te devuelva el teléfono, el Director o el administrador confirman la entrega y te lo quedará registrado en el estado del caso.
 
 ## Generar informes
 Ve a **Informes**:

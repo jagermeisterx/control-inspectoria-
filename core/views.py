@@ -13,6 +13,8 @@ from django.http import HttpResponse
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.urls import reverse
 
 import openpyxl
 from reportlab.lib.pagesizes import letter, landscape
@@ -24,7 +26,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from .models import Alumno, Retiro, Atraso, ControlUniforme, Celular, VisitaApoderado, AccionDisciplinaria, ConfiguracionRegistro
 from .forms import (
     AlumnoForm, RetiroForm, AtrasoForm, ControlUniformeForm,
-    CelularForm, VisitaApoderadoForm, ImportAlumnosForm,
+    CelularForm, CelularEntregaForm, VisitaApoderadoForm, ImportAlumnosForm,
     AccionDisciplinariaForm,
     UsuarioForm, UsuarioCrearForm, UsuarioPasswordForm,
     RegistroForm,
@@ -220,7 +222,7 @@ def atrasos(request):
 def uniformes(request):
     return _list_create(request, ControlUniforme, ControlUniformeForm, "core/uniformes.html")
 
-@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR)
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
 def celulares(request):
     conteo = dict(
         Celular.objects.values_list("alumno_id").annotate(total=Count("id"))
@@ -229,6 +231,65 @@ def celulares(request):
         request, Celular, CelularForm, "core/celulares.html",
         extra_context={"conteo_celulares": conteo},
     )
+
+
+# ── Celulares del día (dirección): custodia y confirmación de entrega ──
+@rol_requerido(DIRECTOR)
+def celulares_del_dia(request):
+    """Lista los celulares requisados en una fecha (hoy por defecto).
+
+    Muestra, por alumno, cuántas veces se le ha requisado el teléfono
+    (conteo histórico) y permite confirmar la entrega. El superusuario
+    (admin) también tiene acceso por `tiene_rol`.
+    """
+    fecha = parse_date(request.GET.get("fecha", "")) or date.today()
+
+    registros = list(
+        Celular.objects.filter(fecha=fecha).select_related("alumno", "entregado_por")
+    )
+
+    # Conteo histórico por alumno (todas las fechas), igual que en /celulares/.
+    conteo = dict(Celular.objects.values_list("alumno_id").annotate(total=Count("id")))
+
+    ctx = {
+        "fecha": fecha,
+        "fecha_iso": fecha.isoformat(),
+        "registros": registros,
+        "conteo_celulares": conteo,
+        "retiro_opciones": Celular.RETIRO_RESUELTOS,
+        "total_dia": len(registros),
+        "total_pendientes": sum(1 for r in registros if r.estado == "EN_DIRECCION"),
+        "total_entregados": sum(1 for r in registros if r.estado == "ENTREGADO"),
+    }
+    return render(request, "core/celulares_dia.html", ctx)
+
+
+@rol_requerido(DIRECTOR)
+def entregar_celular(request, pk):
+    """Confirma la devolución del teléfono y resuelve la modalidad de retiro."""
+    celular = get_object_or_404(Celular, pk=pk)
+    if request.method != "POST":
+        return redirect("celulares_del_dia")
+
+    form = CelularEntregaForm(request.POST)
+    if form.is_valid():
+        celular.estado = "ENTREGADO"
+        celular.fecha_entrega = timezone.now()
+        celular.entregado_por = request.user
+        celular.retiro = form.cleaned_data["retiro"]
+        celular.save(update_fields=["estado", "fecha_entrega", "entregado_por", "retiro"])
+        messages.success(
+            request,
+            f"Teléfono de {celular.alumno.nombre_completo} marcado como entregado.",
+        )
+    else:
+        messages.error(request, "No se pudo confirmar la entrega.")
+
+    destino = reverse("celulares_del_dia")
+    fecha_vuelta = request.POST.get("fecha")
+    if fecha_vuelta:
+        destino = f"{destino}?fecha={fecha_vuelta}"
+    return redirect(destino)
 
 @rol_requerido(INSPECTOR_GENERAL, INSPECTOR)
 def visitas(request):
@@ -912,6 +973,10 @@ def dashboard_director(request):
         "serie": serie,
         "meses_disponibles": meses_disponibles,
         "total_alumnos": Alumno.objects.filter(activo=True).count(),
+        "celulares_hoy": hoy,
+        "cel_hoy_total": Celular.objects.filter(fecha=hoy).count(),
+        "cel_hoy_pendientes": Celular.objects.filter(fecha=hoy, estado="EN_DIRECCION").count(),
+        "cel_hoy_entregados": Celular.objects.filter(fecha=hoy, estado="ENTREGADO").count(),
     }
     return render(request, "core/dashboard_director.html", ctx)
 
@@ -1082,9 +1147,15 @@ def exportar_excel_alumno(request, pk):
 
     # Celulares
     ws4 = wb.create_sheet("Celulares")
-    ws4.append(["Fecha", "Lugar", "Retiro", "Aviso apoderado"])
-    for c in Celular.objects.filter(alumno=alumno):
-        ws4.append([c.fecha, c.lugar_entregado, c.retiro, "Sí" if c.aviso_apoderado else "No"])
+    ws4.append(["Fecha", "Lugar", "Retiro", "Aviso apoderado", "Estado", "Fecha entrega", "Entregado por"])
+    for c in Celular.objects.filter(alumno=alumno).select_related("entregado_por"):
+        ws4.append([
+            c.fecha, c.lugar_entregado, c.retiro,
+            "Sí" if c.aviso_apoderado else "No",
+            c.get_estado_display(),
+            c.fecha_entrega.strftime("%d/%m/%Y %H:%M") if c.fecha_entrega else "",
+            c.entregado_por.username if c.entregado_por else "",
+        ])
 
     # Acciones disciplinarias
     ws5 = wb.create_sheet("Acciones")
@@ -1376,6 +1447,7 @@ def cargar_historico(request):
                         retiro=str(row[5] or "AL FINAL DEL DÍA"),
                         aviso_apoderado=_es_verdadero(row[6]),
                         registrado_por=request.user,
+                        estado="ENTREGADO",
                     ))
                 Celular.objects.bulk_create(objs)
                 resultados.append(("Celulares", len(objs), len([e for e in errores if e["hoja"] == "Celulares"])))

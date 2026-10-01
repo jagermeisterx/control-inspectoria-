@@ -549,6 +549,8 @@ a:hover { color: var(--primary-dark); }
 .badge-llamada { background: var(--info); color: #fff; }
 .badge-entrevista { background: var(--success); color: #fff; }
 .badge-suspension { background: var(--danger); color: #fff; }
+.badge-en_direccion { background: var(--warning); color: #fff; }
+.badge-entregado { background: var(--success); color: #fff; }
 
 .badge-curso-sm {
   font-size: 0.7rem;

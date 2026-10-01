@@ -5,7 +5,7 @@ Rol de supervisión. Cuenta con un dashboard comparativo mensual, el seguimiento
 ## Acceso
 1. Ingresa con tu usuario y contraseña.
 2. Llegas directamente al **Dashboard Director**.
-3. Menú lateral: Dashboard Director, Acciones Disc., Informes y Reporte General.
+3. Menú lateral: Dashboard Director, Celulares, Celulares del día, Acciones Disc., Informes y Reporte General.
 
 ## Dashboard Director
 1. Selecciona **mes y año** con los selectores superiores (hay historial de 12 meses).
@@ -18,11 +18,26 @@ Rol de supervisión. Cuenta con un dashboard comparativo mensual, el seguimiento
    - **Top 10 alumnos con más atrasos**.
    - **Retiros por motivo**.
    - **Serie de 6 meses** con la evolución de cada indicador.
+4. La tarjeta **Celulares en Dirección** muestra los teléfonos requisados hoy: cuántos siguen en tu poder, cuántos se entregaron y el total. Desde ahí entras a **Confirmar entregas**.
+
+## Celulares en dirección
+Los profesores (y tú) requisan los teléfonos desde **Celulares**. Cada registro queda automáticamente en estado *En poder de la dirección* y con la modalidad de retiro en *Pendiente*.
+
+1. Ve a **Celulares del día** (o pulsa **Confirmar entregas** desde el dashboard).
+2. Elige la fecha si quieres revisar otro día; por defecto es hoy.
+3. La tabla muestra, por registro: alumno, curso, **cuántas veces se le ha quitado el teléfono** (conteo acumulado del alumno), lugar de entrega y estado.
+4. En cada teléfono que todavía está en tu poder, elige la **modalidad de retiro** (*Al final del día* o *Retira apoderado*) y pulsa **Entregar**.
+5. Queda registrado el estado *Entregado* con la fecha, la hora y tu usuario. Puedes devolver el teléfono más de una vez si vuelve a ser requisado.
+
+> La confirmación de entrega también puede realizarla el **administrador** del sistema.
+
+## Registrar celulares
+Si te entreguen un teléfono directamente, puedes registrarlo en **Celulares** como cualquier profesor: busca al alumno, pon la fecha, el lugar y la observación. También puedes eliminar registros desde esa pantalla.
 
 ## Acciones disciplinarias
 1. Ve a **Acciones Disc.**
 2. Busca al alumno escribiendo su nombre y selecciónalo de las sugerencias.
-3. Selecciona el **tipo de acción**: *Llamada a apoderado* o *Suspensión*, escribe las observaciones y pulsa **Registrar**.
+3. Selecciona el **tipo de acción**: *Llamada a apoderado*, *Entrevista* o *Suspensión*, escribe las observaciones y pulsa **Registrar**.
 4. La acción queda en el listado con filtros por nombre y fechas, en el **informe del alumno** (HTML, PDF y Excel) y en el contador **Acciones mes** del dashboard.
 
 ## Informes
