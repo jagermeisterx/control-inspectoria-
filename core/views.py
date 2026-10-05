@@ -1088,6 +1088,19 @@ def exportar_pdf_alumno(request, pk):
     return resp
 
 
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def imprimir_pase(request, pk):
+    """Pase de autorización de ingreso a clases en 80 mm para impresora POS."""
+    from .pase_generator import generar_pdf_pase
+    atraso = get_object_or_404(Atraso.objects.select_related("alumno"), pk=pk)
+    buf = generar_pdf_pase(atraso.alumno, atraso)
+    resp = HttpResponse(buf, content_type="application/pdf")
+    resp["Content-Disposition"] = (
+        f'inline; filename="pase_{atraso.fecha}_{atraso.id}.pdf"'
+    )
+    return resp
+
+
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
 def exportar_pdf_curso(request, curso):
     from .pdf_generator import generar_pdf_curso
