@@ -121,11 +121,19 @@ class CelularForm(forms.ModelForm):
         model = Celular
         fields = ["fecha", "lugar_entregado", "aviso_apoderado", "observacion"]
         widgets = {
-            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
             "lugar_entregado": forms.Select(attrs={"class": "form-select"}),
             "aviso_apoderado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Por defecto, fecha actual y lugar "Dirección".
+        # Solo se prellena en un formulario nuevo (sin datos POST ni instancia).
+        if not self.instance.pk and not self.data:
+            self.initial.setdefault("fecha", timezone.localtime(timezone.now()).date())
+            self.initial.setdefault("lugar_entregado", "DIRECCIÓN")
 
 
 class CelularEntregaForm(forms.ModelForm):
