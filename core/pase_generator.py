@@ -28,7 +28,10 @@ from reportlab.pdfgen import canvas as pdfcanvas
 # ── Configuración de la bobina ──
 ANCHO_MM = 80
 ALTO_MM = 110
-MARGEN_MM = 4
+# Los cabezales POS imprimen ~64 mm útiles sobre bobina de 80 mm, así que el
+# margen lateral tiene que ser generoso o texto y líneas salen cortados.
+MARGEN_X = 8
+MARGEN_Y = 4
 
 # ── Encabezado ──
 LOGO_ALTO_MM = 15
@@ -41,7 +44,7 @@ TITULO = "AUTORIZACION INGRESO A CLASES"
 # ── Tipografía ──
 FUENTE = "Helvetica"
 FUENTE_BOLD = "Helvetica-Bold"
-F_TITULO = 11
+F_TITULO = 10  # 11 pt mide 69,4 mm y se corta en el cabezal; 10 pt mide 63,1 mm
 F_ROTULO = 9
 F_VALOR = 11
 
@@ -58,8 +61,8 @@ GROSOR_CORTE = 0.4
 
 NEGRO = colors.black
 
-ANCHO_UTIL = ANCHO_MM * mm - 2 * MARGEN_MM * mm
-X_ETIQUETAS = MARGEN_MM * mm
+ANCHO_UTIL = ANCHO_MM * mm - 2 * MARGEN_X * mm
+X_ETIQUETAS = MARGEN_X * mm
 
 
 def _logo_pase_path():
@@ -175,10 +178,10 @@ def generar_pdf_pase(alumno, atraso=None):
 
     ancho = ANCHO_MM * mm
     alto = ALTO_MM * mm
-    x0 = MARGEN_MM * mm
-    x1 = ancho - MARGEN_MM * mm
+    x0 = MARGEN_X * mm
+    x1 = ancho - MARGEN_X * mm
 
-    y = alto - MARGEN_MM * mm - 1 * mm
+    y = alto - MARGEN_Y * mm - 1 * mm
 
     # ── Encabezado: logo binario centrado ──
     y = _dibujar_logo(c, ancho / 2, y)
