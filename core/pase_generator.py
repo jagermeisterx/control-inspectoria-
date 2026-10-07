@@ -28,9 +28,9 @@ from reportlab.pdfgen import canvas as pdfcanvas
 # ── Configuración de la bobina ──
 ANCHO_MM = 80
 ALTO_MM = 110
-# Los cabezales POS imprimen ~64 mm útiles sobre bobina de 80 mm, así que el
-# margen lateral tiene que ser generoso o texto y líneas salen cortados.
-MARGEN_X = 8
+# Los cabezales POS no imprimen hasta el borde de la bobina de 80 mm y el
+# corte a la izquierda salía más marcado, así que el margen va generoso.
+MARGEN_X = 11
 MARGEN_Y = 4
 
 # ── Encabezado ──
@@ -44,7 +44,7 @@ TITULO = "AUTORIZACION INGRESO A CLASES"
 # ── Tipografía ──
 FUENTE = "Helvetica"
 FUENTE_BOLD = "Helvetica-Bold"
-F_TITULO = 10  # 11 pt mide 69,4 mm y se corta en el cabezal; 10 pt mide 63,1 mm
+F_TITULO = 9  # 11 pt mide 69,4 mm y 10 pt 63,1 mm; con 58 mm útiles solo entra 9 pt (56,8 mm)
 F_ROTULO = 9
 F_VALOR = 11
 
