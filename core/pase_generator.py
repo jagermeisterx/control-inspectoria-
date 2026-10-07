@@ -7,158 +7,216 @@ en formato vertical de 80 mm para impresora POS (bobina térmica).
 El pase original es apaisado; acá los campos se reordenan en vertical porque
 la bobina POS imprime de lado a lado. La sección "TIMBRE Y FIRMA" se imprime
 como línea punteada vacía, para completar a mano.
+
+Diseño pensado para térmico en blanco y negro:
+  · solo negro puro (#000000): los grises se tramadan y salen borrosos
+  · los valores van en negrita a 11 pt, los rótulos a 9 pt
+  · los campos no llevan línea punteada, así el texto nunca pisa una línea
+  · el logo se usa en una copia binaria (static/img/logo_pase.png) para que
+    se imprima como mancha negra sólida y no como gris ditherizado
 """
 import io
+import os
+
+from django.conf import settings
 
 from reportlab.lib import colors
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
 
 # ── Configuración de la bobina ──
 ANCHO_MM = 80
-ALTO_MM = 100          # altura del pase; deja ~16 mm libres bajo la firma
+ALTO_MM = 110
 MARGEN_MM = 4
-SANGRIA_MM = 3          # sangría de los rótulos respecto del borde
 
-# ── Datos de cabecera del colegio (según pase físico) ──
-COLEGIO = "Escuela Particular Alemana"
-DIRECCION = "Camilo Henriquez 125-Pallaco"
-EMAIL = "Email: escalemana@gmail.com"
+# ── Encabezado ──
+LOGO_ALTO_MM = 15
+GAP_LOGO_TITULO = 6.0 * mm   # borde inferior del logo → baseline del título
+GAP_TITULO_REGLA = 3.5 * mm  # baseline del título → regla
+GAP_REGLA_ROTULO = 4.5 * mm  # regla → primer rótulo
+
 TITULO = "AUTORIZACION INGRESO A CLASES"
 
 # ── Tipografía ──
 FUENTE = "Helvetica"
 FUENTE_BOLD = "Helvetica-Bold"
-F_TITULO_PASSE = 10
-F_CABECERA = 9
-F_SUBTITULO = 7
-F_ROTULO = 8
-F_VALOR = 9
+F_TITULO = 11
+F_ROTULO = 9
+F_VALOR = 11
 
-NEGRO = colors.HexColor("#1A1A1A")
-GRIS = colors.HexColor("#666666")
-DORADO = colors.HexColor("#C5A000")
+# ── Ritmo vertical ──
+SALTO_ROTULO = 5.0 * mm   # rótulo → primer valor
+ALTO_CAMPO = 9.2 * mm     # rótulo → siguiente rótulo
+INTERLINEADO = 4.5 * mm    # valor → valor extra (wrap)
 
-# Separación vertical entre bloques de campos
-SALTO_ROTULO = 3.2 * mm      # rótulo → línea de relleno
-ALTO_CAMPO = 9.0 * mm       # línea de relleno → siguiente rótulo
+# ── Firma y corte ──
+GAP_CORTE = 6 * mm         # borde inferior → marca de corte
+GROSOR_FIRMA = 0.5         # línea de firma
+GROSOR_REGLA = 1.0         # regla bajo el título
+GROSOR_CORTE = 0.4
+
+NEGRO = colors.black
 
 ANCHO_UTIL = ANCHO_MM * mm - 2 * MARGEN_MM * mm
-X_ETIQUETAS = MARGEN_MM * mm + SANGRIA_MM * mm
-X_VALOR = X_ETIQUETAS
-X_Linea = ANCHO_MM * mm - MARGEN_MM * mm
-
-_CORTE_Y = 6 * mm            # marca de corte inferior
-_ALTO_TRAZO = 0.3
+X_ETIQUETAS = MARGEN_MM * mm
 
 
-def _linea_punteada(c, x, y, x2, color=NEGRO, grosor=_ALTO_TRAZO, guion=0.9):
-    """Línea punteada horizontal, usada para rellenar a mano los campos."""
+def _logo_pase_path():
+    return os.path.join(settings.BASE_DIR, "static", "img", "logo_pase.png")
+
+
+def _dibujar_logo(c, x_centro, y_top, alto=LOGO_ALTO_MM):
+    """Dibuja el logo binario centrado. Devuelve la Y de su borde inferior."""
+    path = _logo_pase_path()
+    if not os.path.exists(path):
+        return y_top
+    try:
+        iw, ih = ImageReader(path).getSize()
+    except Exception:
+        return y_top
+    if not iw or not ih:
+        return y_top
+    h = alto * mm
+    w = h * iw / ih
+    c.drawImage(path, x_centro - w / 2, y_top - h, width=w, height=h)
+    return y_top - h
+
+
+def _linea(c, x, y, x2, grosor=GROSOR_REGLA, color=NEGRO, punteada=False):
     c.saveState()
     c.setStrokeColor(color)
     c.setLineWidth(grosor)
-    c.setDash(guion * mm, 1.2 * mm)
+    if punteada:
+        c.setDash(0.9 * mm, 1.2 * mm)
     c.line(x, y, x2, y)
     c.restoreState()
 
 
-def _recortar(c, texto, ancho_max, fuente=FUENTE, size=F_VALOR):
-    """Corta el texto con puntos suspensivos si excede el ancho disponible."""
-    texto = (texto or "").strip()
-    if not texto:
-        return ""
-    if c.stringWidth(texto, fuente, size) <= ancho_max:
-        return texto
-    puntos = "…"
-    while texto and c.stringWidth(texto + puntos, fuente, size) > ancho_max:
-        texto = texto[:-1].rstrip()
-    return (texto + puntos) if texto else ""
-
-
-def _centrado(c, texto, y, fuente=FUENTE_BOLD, size=F_CABECERA, color=NEGRO):
+def _centrado(c, texto, y, fuente=FUENTE_BOLD, size=F_TITULO, color=NEGRO):
     c.setFont(fuente, size)
     c.setFillColor(color)
     c.drawCentredString(ANCHO_MM * mm / 2, y, texto)
 
 
-def _campo(c, rotulo, valor, y, linea=True):
-    """Dibuja rótulo en negrita + línea punteada con el valor.
+def _cortar(c, texto, ancho_max, fuente, size):
+    """Recorta con puntos suspensivos si la línea excede el ancho disponible."""
+    if c.stringWidth(texto, fuente, size) <= ancho_max:
+        return texto
+    while texto and c.stringWidth(texto + "…", fuente, size) > ancho_max:
+        texto = texto[:-1].rstrip()
+    return texto + "…" if texto else ""
 
-    Si valor viene en lista, se dibuja en varias líneas (una por elemento).
-    Devuelve la coordenada Y lista para el siguiente campo.
+
+def _envolver(c, texto, ancho_max, max_lineas, fuente, size):
+    """Parte el texto en líneas que entran en ancho_max, hasta max_lineas.
+
+    Si sobran palabras, la última línea se corta con "…".
+    """
+    palabras = (texto or "").split()
+    if not palabras:
+        return []
+    lineas, actual = [], ""
+    for p in palabras:
+        candidata = f"{actual} {p}".strip()
+        if not actual or c.stringWidth(candidata, fuente, size) <= ancho_max:
+            actual = candidata
+        else:
+            lineas.append(actual)
+            actual = p
+    if actual:
+        lineas.append(actual)
+
+    if len(lineas) > max_lineas:
+        lineas = lineas[:max_lineas]
+        corte = lineas[-1]
+        while corte and c.stringWidth(corte + "…", fuente, size) > ancho_max:
+            corte = corte[:-1].rstrip()
+        lineas[-1] = corte + "…" if corte else "…"
+        return lineas
+
+    return [_cortar(c, l, ancho_max, fuente, size) for l in lineas]
+
+
+def _campo(c, rotulo, valor, y, max_lineas=1):
+    """Rótulo en negrita + valor en negrita debajo, sin línea punteada.
+
+    Devuelve la Y para el siguiente rótulo.
     """
     c.setFont(FUENTE_BOLD, F_ROTULO)
     c.setFillColor(NEGRO)
     c.drawString(X_ETIQUETAS, y, rotulo)
 
-    y_linea = y - SALTO_ROTULO
-    if linea:
-        _linea_punteada(c, X_Linea, y_linea, X_Linea, NEGRO)
+    if not valor:
+        return y - ALTO_CAMPO
 
-    if valor:
-        valores = valor if isinstance(valor, (list, tuple)) else [valor]
-        c.setFont(FUENTE, F_VALOR)
-        c.setFillColor(NEGRO)
-        for v in valores:
-            c.drawString(X_VALOR, y_linea, _recortar(c, v, ANCHO_UTIL, FUENTE, F_VALOR))
-            y_linea -= 4.4 * mm
+    lineas = _envolver(c, valor, ANCHO_UTIL, max_lineas, FUENTE_BOLD, F_VALOR)
+    c.setFont(FUENTE_BOLD, F_VALOR)
+    c.setFillColor(NEGRO)
+    y_val = y - SALTO_ROTULO
+    for linea in lineas:
+        c.drawString(X_ETIQUETAS, y_val, linea)
+        y_val -= INTERLINEADO
 
-    return y - ALTO_CAMPO
+    extra = INTERLINEADO * max(0, len(lineas) - 1)
+    return y - ALTO_CAMPO - extra
 
 
 def generar_pdf_pase(alumno, atraso=None):
     """Genera el pase de autorización en PDF de 80 mm y devuelve un BytesIO.
 
     alumno : instancia de core.models.Alumno
-    atraso : instancia de core.models.Atraso (opcional; si falta, usa fecha/hora
-             vacías y el motivo por defecto)
+    atraso : instancia de core.models.Atraso (opcional; si falta, los campos
+             de fecha y hora quedan en blanco)
     """
     buf = io.BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=(ANCHO_MM * mm, ALTO_MM * mm))
     c.setTitle(f"Pase {alumno.nombre_completo}")
 
-    margen = MARGEN_MM * mm
-    y = ALTO_MM * mm - margen - 2 * mm
+    ancho = ANCHO_MM * mm
+    alto = ALTO_MM * mm
+    x0 = MARGEN_MM * mm
+    x1 = ancho - MARGEN_MM * mm
 
-    # ── Encabezado del colegio ──
-    _centrado(c, COLEGIO, y, FUENTE_BOLD, F_CABECERA, NEGRO)
-    y -= 3.6 * mm
-    _centrado(c, DIRECCION, y, FUENTE, F_SUBTITULO, GRIS)
-    y -= 3.2 * mm
-    _centrado(c, EMAIL, y, FUENTE, F_SUBTITULO, GRIS)
-    y -= 3.2 * mm
+    y = alto - MARGEN_MM * mm - 1 * mm
 
-    _linea_punteada(c, margen, y, ANCHO_MM * mm - margen, DORADO, 0.5, guion=2.0)
-    y -= 5.5 * mm
+    # ── Encabezado: logo binario centrado ──
+    y = _dibujar_logo(c, ancho / 2, y)
 
-    # ── Título ──
-    _centrado(c, TITULO, y, FUENTE_BOLD, F_TITULO_PASSE, NEGRO)
-    y -= 8 * mm
+    # ── Título + regla ──
+    y -= GAP_LOGO_TITULO
+    _centrado(c, TITULO, y, FUENTE_BOLD, F_TITULO, NEGRO)
+    y -= GAP_TITULO_REGLA
+    _linea(c, x0, y, x1, GROSOR_REGLA, NEGRO)
 
     # ── Datos del pase ──
     fecha = atraso.fecha.strftime("%d/%m/%Y") if atraso else ""
     hora = atraso.hora.strftime("%H:%M") if atraso and atraso.hora else ""
-    curso = alumno.curso or ""
+    curso = (alumno.curso or "").strip()
     if alumno.es_campo:
         curso = f"{curso} (CAMPO)".strip()
 
-    motivo = atraso.motivo if atraso else ""
-    if atraso and atraso.lugar:
-        motivo = f"{motivo} · {atraso.lugar}".strip(" ·")
-    if atraso and atraso.observacion:
-        motivo = f"{motivo} · {atraso.observacion}".strip(" ·")
+    motivo = (atraso.motivo if atraso else "").strip()
+    if atraso:
+        lugar = (atraso.lugar or "").strip()
+        if lugar and lugar.upper() not in motivo.upper():
+            motivo = f"{motivo} · {lugar}".strip(" ·")
 
+    y -= GAP_REGLA_ROTULO
     y = _campo(c, "FECHA:", fecha, y)
-    y = _campo(c, "NOMBRE ALUMNO:", alumno.nombre_completo.upper(), y)
-    y = _campo(c, "CURSO:", curso, y)
+    y = _campo(c, "NOMBRE ALUMNO:", alumno.nombre_completo.upper(), y, max_lineas=2)
+    y = _campo(c, "CURSO:", curso.upper(), y)
     y = _campo(c, "HORA:", hora, y)
-    y = _campo(c, "MOTIVO:", motivo, y)
+    y = _campo(c, "MOTIVO:", motivo.upper(), y, max_lineas=2)
 
-    # ── Timbre y firma (se deja en blanco para completar a mano) ──
-    _campo(c, "TIMBRE Y FIRMA:", None, y)
+    # ── Timbre y firma: se deja en blanco para completar a mano ──
+    c.setFont(FUENTE_BOLD, F_ROTULO)
+    c.setFillColor(NEGRO)
+    c.drawString(X_ETIQUETAS, y, "TIMBRE Y FIRMA:")
+    _linea(c, x0, y - SALTO_ROTULO, x1, GROSOR_FIRMA, NEGRO, punteada=True)
 
     # ── Marca de corte para la impresora POS ──
-    _linea_punteada(c, margen, _CORTE_Y, ANCHO_MM * mm - margen, GRIS, 0.3, guion=3.0)
+    _linea(c, x0, GAP_CORTE, x1, GROSOR_CORTE, NEGRO, punteada=True)
 
     c.showPage()
     c.save()
