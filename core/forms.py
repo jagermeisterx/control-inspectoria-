@@ -106,9 +106,16 @@ class ControlUniformeForm(forms.ModelForm):
         model = ControlUniforme
         fields = ["fecha", "falta"]
         widgets = {
-            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "fecha": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
             "falta": forms.Select(attrs={"class": "form-select"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Por defecto, fecha actual. Solo se prellena en un formulario nuevo
+        # (sin datos POST ni instancia).
+        if not self.instance.pk and not self.data:
+            self.initial.setdefault("fecha", timezone.localtime(timezone.now()).date())
 
 
 class CelularForm(forms.ModelForm):
