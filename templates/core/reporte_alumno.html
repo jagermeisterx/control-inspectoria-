@@ -88,7 +88,7 @@
                 {% for a in atrasos %}
                 <tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>{{ a.hora|time:"H:i" }}</td><td><span class="badge badge-{{ a.tipo|lower }}">{{ a.tipo }}</span></td><td>{{ a.lugar }}</td>
                 <td class="text-end">
-                    <a href="{% url 'imprimir_pase' a.pk %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" title="Imprimir pase (POS 80 mm)" aria-label="Imprimir pase"><i class="bi bi-receipt"></i></a>
+                    <a href="{% url 'imprimir_pase_ui' a.pk %}" class="btn btn-outline-secondary btn-sm" title="Imprimir pase (POS 80 mm)" aria-label="Imprimir pase" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
                 </td></tr>
                 {% endfor %}
             </tbody>

@@ -47,6 +47,7 @@ urlpatterns = [
     path("exportar/pdf/frecuencia-faltas/", views.exportar_pdf_frecuencia_faltas, name="exportar_pdf_frecuencia_faltas"),
     # Pase de autorización de ingreso (POS 80 mm)
     path("pase/atraso/<int:pk>/", views.imprimir_pase, name="imprimir_pase"),
+    path("pase/atraso/<int:pk>/imprimir/", views.imprimir_pase_ui, name="imprimir_pase_ui"),
     # API
     path("api/alumnos/", views.api_buscar_alumnos, name="api_buscar_alumnos"),
 ]

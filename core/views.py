@@ -1098,7 +1098,18 @@ def imprimir_pase(request, pk):
     resp["Content-Disposition"] = (
         f'inline; filename="pase_{atraso.fecha}_{atraso.id}.pdf"'
     )
+    # settings.X_FRAME_OPTIONS = "DENY" en producción impediría cargar este PDF
+    # dentro del iframe de imprimir_pase_ui. SAMEORIGIN sigue bloqueando
+    # clickjacking desde otros orígenes.
+    resp["X-Frame-Options"] = "SAMEORIGIN"
     return resp
+
+
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def imprimir_pase_ui(request, pk):
+    """Pestaña intermedia que embebe el pase y dispara el diálogo de impresión."""
+    atraso = get_object_or_404(Atraso.objects.select_related("alumno"), pk=pk)
+    return render(request, "core/pase_imprimir.html", {"atraso": atraso})
 
 
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)
