@@ -1107,9 +1107,12 @@ def imprimir_pase(request, pk):
 
 @rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
 def imprimir_pase_ui(request, pk):
-    """Pestaña intermedia que embebe el pase y dispara el diálogo de impresión."""
+    """Pestaña intermedia que muestra el pase y abre el diálogo de impresión."""
+    from .pase_generator import datos_pase
     atraso = get_object_or_404(Atraso.objects.select_related("alumno"), pk=pk)
-    return render(request, "core/pase_imprimir.html", {"atraso": atraso})
+    ctx = datos_pase(atraso.alumno, atraso)
+    ctx["atraso"] = atraso
+    return render(request, "core/pase_imprimir.html", ctx)
 
 
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)

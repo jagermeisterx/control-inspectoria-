@@ -165,6 +165,34 @@ def _campo(c, rotulo, valor, y, max_lineas=1):
     return y - ALTO_CAMPO - extra
 
 
+def datos_pase(alumno, atraso=None):
+    """Campos del pase (en mayúsculas) para compartir entre el PDF y el HTML.
+
+    alumno : instancia de core.models.Alumno
+    atraso : instancia de core.models.Atraso (opcional; si falta, los campos
+             de fecha y hora quedan en blanco)
+    """
+    fecha = atraso.fecha.strftime("%d/%m/%Y") if atraso else ""
+    hora = atraso.hora.strftime("%H:%M") if atraso and atraso.hora else ""
+    curso = (alumno.curso or "").strip()
+    if alumno.es_campo:
+        curso = f"{curso} (CAMPO)".strip()
+
+    motivo = (atraso.motivo if atraso else "").strip()
+    if atraso:
+        lugar = (atraso.lugar or "").strip()
+        if lugar and lugar.upper() not in motivo.upper():
+            motivo = f"{motivo} · {lugar}".strip(" ·")
+
+    return {
+        "fecha": fecha,
+        "hora": hora,
+        "curso": curso.upper(),
+        "motivo": motivo.upper(),
+        "nombre": alumno.nombre_completo.upper(),
+    }
+
+
 def generar_pdf_pase(alumno, atraso=None):
     """Genera el pase de autorización en PDF de 80 mm y devuelve un BytesIO.
 
@@ -172,6 +200,8 @@ def generar_pdf_pase(alumno, atraso=None):
     atraso : instancia de core.models.Atraso (opcional; si falta, los campos
              de fecha y hora quedan en blanco)
     """
+    d = datos_pase(alumno, atraso)
+
     buf = io.BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=(ANCHO_MM * mm, ALTO_MM * mm))
     c.setTitle(f"Pase {alumno.nombre_completo}")
@@ -192,25 +222,12 @@ def generar_pdf_pase(alumno, atraso=None):
     y -= GAP_TITULO_REGLA
     _linea(c, x0, y, x1, GROSOR_REGLA, NEGRO)
 
-    # ── Datos del pase ──
-    fecha = atraso.fecha.strftime("%d/%m/%Y") if atraso else ""
-    hora = atraso.hora.strftime("%H:%M") if atraso and atraso.hora else ""
-    curso = (alumno.curso or "").strip()
-    if alumno.es_campo:
-        curso = f"{curso} (CAMPO)".strip()
-
-    motivo = (atraso.motivo if atraso else "").strip()
-    if atraso:
-        lugar = (atraso.lugar or "").strip()
-        if lugar and lugar.upper() not in motivo.upper():
-            motivo = f"{motivo} · {lugar}".strip(" ·")
-
     y -= GAP_REGLA_ROTULO
-    y = _campo(c, "FECHA:", fecha, y)
-    y = _campo(c, "NOMBRE ALUMNO:", alumno.nombre_completo.upper(), y, max_lineas=2)
-    y = _campo(c, "CURSO:", curso.upper(), y)
-    y = _campo(c, "HORA:", hora, y)
-    y = _campo(c, "MOTIVO:", motivo.upper(), y, max_lineas=2)
+    y = _campo(c, "FECHA:", d["fecha"], y)
+    y = _campo(c, "NOMBRE ALUMNO:", d["nombre"], y, max_lineas=2)
+    y = _campo(c, "CURSO:", d["curso"], y)
+    y = _campo(c, "HORA:", d["hora"], y)
+    y = _campo(c, "MOTIVO:", d["motivo"], y, max_lineas=2)
 
     # ── Timbre y firma: se deja en blanco para completar a mano ──
     c.setFont(FUENTE_BOLD, F_ROTULO)

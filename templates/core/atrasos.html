@@ -89,7 +89,7 @@
                 <td><span class="badge badge-{{ r.tipo|lower }}">{{ r.tipo }}</span></td>
                 <td>{{ r.lugar }}</td>
                 <td class="text-end">
-                    <a href="{% url 'imprimir_pase_ui' r.pk %}" class="btn btn-outline-secondary btn-sm" title="Imprimir pase (POS 80 mm)" aria-label="Imprimir pase" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
+                    <a href="{% url 'imprimir_pase_ui' r.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Imprimir pase (POS 80 mm)" aria-label="Imprimir pase" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
                 </td>
                 {% if user|tiene_rol:'inspector_general' %}
                 <td>

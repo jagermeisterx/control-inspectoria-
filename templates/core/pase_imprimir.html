@@ -6,58 +6,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pase de ingreso — {{ atraso.alumno.nombre_completo }}</title>
     <style>
-        html, body { height: 100%; margin: 0; background: #e9ecef; }
-        #pase { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
-        .acciones {
-            position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
-            display: flex; align-items: center; gap: .5rem; z-index: 10;
-            padding: .5rem .6rem; border-radius: .6rem;
-            background: rgba(33, 37, 41, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+        /* Pase 80 x 110 mm para impresora POS térmica. Impresión: el navegador
+           manda el papel 80x110 con margen 0 (controlamos toda la caja). */
+        @page { size: 80mm 110mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #fff; }
+        body {
+            width: 80mm; height: 110mm;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
+
+        .pase {
+            position: relative;
+            width: 80mm; height: 110mm;
+            padding: 5mm 11mm 0;          /* superior / laterales 11 mm */
+            background: #fff; color: #000;
+        }
+        .logo { height: 15mm; text-align: center; }
+        .logo img { height: 15mm; width: auto; max-width: 58mm; }
+        .titulo { font-weight: 700; font-size: 9pt; line-height: 1.0; text-align: center; margin-top: 5.5mm; }
+        .regla { border-top: 1pt solid #000; margin-top: 2.8mm; }
+
+        .campos { margin-top: 3.8mm; }
+        .campo .rotulo { font-weight: 700; font-size: 9pt; line-height: 1.0; }
+        .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; }
+
+        .firma { margin-top: 4mm; }
+        .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4.2mm; }
+        /* Marca de corte anclada al pie (padding de la caja: 11 mm -> 69 mm) */
+        .corte { position: absolute; left: 0; right: 0; bottom: 6mm; border-top: 0.4pt dashed #000; }
+
+        /* Barra de acciones: solo al ver la pestaña, nunca al imprimir. */
+        .acciones { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10;
+                    display: flex; align-items: center; gap: .5rem; padding: .5rem .6rem; border-radius: .6rem;
+                    background: rgba(33, 37, 41, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .25); }
         .acciones .ayuda { color: #adb5bd; font-size: .75rem; margin-right: .25rem; }
-        .btn {
-            border: 0; border-radius: .45rem; padding: .35rem .8rem;
-            font-size: .8rem; font-weight: 600; cursor: pointer; text-decoration: none;
-        }
+        .btn { border: 0; border-radius: .45rem; padding: .35rem .8rem; font-size: .8rem; font-weight: 600;
+               cursor: pointer; text-decoration: none; }
         .btn-primario { background: #0d6efd; color: #fff; }
         .btn-primario:hover { background: #0b5ed7; }
         .btn-secundario { background: transparent; color: #f8f9fa; border: 1px solid #6c757d; }
-        .btn-secundario:hover { background: rgba(255, 255, 255, .1); }
+        @media print { .acciones { display: none; } }
     </style>
 </head>
 <body>
-    <iframe id="pase" src="{% url 'imprimir_pase' atraso.pk %}"
-            title="Pase de autorización de ingreso"></iframe>
+    <div class="pase">
+        <div class="logo"><img src="{% static 'img/logo_pase.png' %}" alt=""></div>
+        <div class="titulo">AUTORIZACION INGRESO A CLASES</div>
+        <div class="regla"></div>
+
+        <div class="campos">
+            <div class="campo"><div class="rotulo">FECHA:</div><div class="valor">{{ fecha }}</div></div>
+            <div class="campo"><div class="rotulo">NOMBRE ALUMNO:</div><div class="valor">{{ nombre }}</div></div>
+            <div class="campo"><div class="rotulo">CURSO:</div><div class="valor">{{ curso }}</div></div>
+            <div class="campo"><div class="rotulo">HORA:</div><div class="valor">{{ hora }}</div></div>
+            <div class="campo"><div class="rotulo">MOTIVO:</div><div class="valor">{{ motivo }}</div></div>
+        </div>
+
+        <div class="firma">
+            <div class="rotulo">TIMBRE Y FIRMA:</div>
+            <div class="linea-firma"></div>
+        </div>
+        <div class="corte"></div>
+    </div>
 
     <div class="acciones">
         <span class="ayuda">Si no se abre el diálogo, usa Imprimir</span>
-        <button type="button" class="btn btn-primario" onclick="imprimir(false)">Imprimir</button>
-        <a class="btn btn-secundario" href="{% url 'imprimir_pase' atraso.pk %}" target="_blank" rel="noopener">Ver pase</a>
+        <button type="button" class="btn btn-primario" onclick="imprimir()">Imprimir</button>
+        <a class="btn btn-secundario" href="{% url 'imprimir_pase' atraso.pk %}" target="_blank" rel="noopener">Ver PDF</a>
     </div>
 
     <script>
         (function () {
-            var frame = document.getElementById('pase');
-            var yaImprimio = false;
+            var imprimido = false;
 
-            function imprimir(cerrar) {
-                try {
-                    frame.contentWindow.focus();
-                    frame.contentWindow.print();
-                } catch (e) {
-                    // El navegador bloqueó la impresión del iframe: quedan los botones.
-                }
-                // print() es modal en Chrome y Firefox: al volver, el diálogo ya se cerró.
-                if (cerrar) window.close();
+            function imprimir() {
+                if (imprimido) return;
+                imprimido = true;
+                window.print();
+                // print() es modal en Chrome y Firefox: al volver, el diálogo ya
+                // se cerró. afterprint + respaldo por si el navegador no lo emite.
+                window.addEventListener("afterprint", function () { window.close(); });
+                setTimeout(function () { window.close(); }, 5000);
             }
-
-            frame.addEventListener('load', function () {
-                if (yaImprimio) return;
-                yaImprimio = true;
-                setTimeout(function () { imprimir(true); }, 400);
-            });
-
             window.imprimir = imprimir;
+            window.addEventListener("load", function () { setTimeout(imprimir, 350); });
         })();
     </script>
 </body>
