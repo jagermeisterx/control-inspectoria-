@@ -16,6 +16,12 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 
 > **Regla automática:** si el alumno está marcado como **Campo**, el motivo se guarda solo como `CAMPO` (no cuenta como atraso real en la Frecuencia de Faltas). Las acciones disciplinarias (llamada a apoderado / entrevista / suspensión) se registran aparte en **Acciones Disc.** por el Inspector General o el Director.
 
+## Imprimir el pase de un atraso
+1. En la tabla de atrasos, pulsa el ícono de ticket (🧾) de la fila.
+2. Se abre una pestaña con el pase en 80 mm listo para la impresora POS y se inicia el diálogo de impresión.
+3. El pase lleva fecha, nombre, curso, hora y motivo; si el atraso tiene **observación**, también sale impresa.
+4. Con **Ver PDF** puedes abrir el archivo en el visor e imprimirlo desde ahí.
+
 ## Registrar un retiro anticipado
 1. Ve a **Retiros**.
 2. Busca al alumno con el autocompletado.
@@ -30,6 +36,12 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
    - `SIN POLERÓN`
    - `SIN POLERA NI POLERÓN`
 3. Pulsa **Registrar**.
+
+## Imprimir el comunicado de falta de uniforme
+1. En la tabla de uniformes, pulsa el ícono de ticket (🧾) de la fila.
+2. Se abre una pestaña con el comunicado en 80 mm (mismo formato que el pase) y se inicia el diálogo de impresión.
+3. El comunicado lleva fecha, nombre, curso, falta, si tiene uniforme comprado y si se llamó al apoderado; también el detalle, el teléfono del apoderado y la determinación cuando están registrados.
+4. Con **Ver PDF** puedes abrir el archivo en el visor e imprimirlo desde ahí.
 
 ## Requisar un celular
 1. Ve a **Celulares**.

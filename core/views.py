@@ -248,6 +248,14 @@ def celulares_del_dia(request):
         Celular.objects.filter(fecha=fecha).select_related("alumno", "entregado_por")
     )
 
+    # Pendientes de entrega: todos los teléfonos que siguen en poder de la
+    # dirección, sin importar la fecha (el más antiguo primero).
+    pendientes = list(
+        Celular.objects.filter(estado="EN_DIRECCION")
+        .select_related("alumno")
+        .order_by("fecha", "creado")
+    )
+
     # Conteo histórico por alumno (todas las fechas), igual que en /celulares/.
     conteo = dict(Celular.objects.values_list("alumno_id").annotate(total=Count("id")))
 
@@ -255,11 +263,13 @@ def celulares_del_dia(request):
         "fecha": fecha,
         "fecha_iso": fecha.isoformat(),
         "registros": registros,
+        "pendientes": pendientes,
         "conteo_celulares": conteo,
         "retiro_opciones": Celular.RETIRO_RESUELTOS,
         "total_dia": len(registros),
         "total_pendientes": sum(1 for r in registros if r.estado == "EN_DIRECCION"),
         "total_entregados": sum(1 for r in registros if r.estado == "ENTREGADO"),
+        "total_pendientes_todos": len(pendientes),
     }
     return render(request, "core/celulares_dia.html", ctx)
 
@@ -977,6 +987,7 @@ def dashboard_director(request):
         "cel_hoy_total": Celular.objects.filter(fecha=hoy).count(),
         "cel_hoy_pendientes": Celular.objects.filter(fecha=hoy, estado="EN_DIRECCION").count(),
         "cel_hoy_entregados": Celular.objects.filter(fecha=hoy, estado="ENTREGADO").count(),
+        "cel_pendientes_total": Celular.objects.filter(estado="EN_DIRECCION").count(),
     }
     return render(request, "core/dashboard_director.html", ctx)
 
@@ -1113,6 +1124,32 @@ def imprimir_pase_ui(request, pk):
     ctx = datos_pase(atraso.alumno, atraso)
     ctx["atraso"] = atraso
     return render(request, "core/pase_imprimir.html", ctx)
+
+
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def imprimir_comunicado_uniforme(request, pk):
+    """Comunicado de falta de uniforme en 80 mm para impresora POS."""
+    from .pase_generator import generar_pdf_comunicado
+    uniforme = get_object_or_404(ControlUniforme.objects.select_related("alumno"), pk=pk)
+    buf = generar_pdf_comunicado(uniforme)
+    resp = HttpResponse(buf, content_type="application/pdf")
+    resp["Content-Disposition"] = (
+        f'inline; filename="comunicado_uniforme_{uniforme.fecha}_{uniforme.id}.pdf"'
+    )
+    # Mismo criterio que el pase: permite embeber el PDF sin abrir el
+    # clickjacking desde otros orígenes.
+    resp["X-Frame-Options"] = "SAMEORIGIN"
+    return resp
+
+
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def imprimir_comunicado_uniforme_ui(request, pk):
+    """Pestaña intermedia del comunicado: abre el diálogo de impresión."""
+    from .pase_generator import datos_comunicado
+    uniforme = get_object_or_404(ControlUniforme.objects.select_related("alumno"), pk=pk)
+    ctx = datos_comunicado(uniforme)
+    ctx["uniforme"] = uniforme
+    return render(request, "core/comunicado_imprimir.html", ctx)
 
 
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)

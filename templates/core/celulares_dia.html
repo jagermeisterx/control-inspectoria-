@@ -17,7 +17,7 @@
         <a href="{% url 'celulares_del_dia' %}" class="btn btn-sm btn-link">Hoy</a>
     </form>
     <span class="text-muted small">
-        {{ total_dia }} registrados · <span class="text-warning-emphasis fw-semibold">{{ total_pendientes }} en dirección</span> · {{ total_entregados }} entregados
+        {{ total_dia }} registrados · <span class="text-warning-emphasis fw-semibold">{{ total_pendientes }} en dirección (del día)</span> · {{ total_entregados }} entregados · <span class="text-danger fw-semibold">{{ total_pendientes_todos }} pendientes en total</span>
     </span>
 </div>
 
@@ -72,6 +72,60 @@
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div class="card-custom mt-3">
+    <h6 class="fw-bold mb-1"><i class="bi bi-hourglass-split text-danger"></i> Pendientes de entrega ({{ total_pendientes_todos }})</h6>
+    <p class="text-muted small mb-3">Teléfonos que siguen en poder de la dirección, de cualquier fecha. Primero los más antiguos.</p>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Alumno/a</th>
+                    <th>Curso</th>
+                    <th>Requisado</th>
+                    <th class="text-center">Días</th>
+                    <th>Lugar</th>
+                    <th class="text-center">N° veces</th>
+                    <th class="text-end">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in pendientes %}
+                <tr>
+                    <td class="fw-semibold">{{ r.alumno.nombre_completo }}</td>
+                    <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
+                    <td>{{ r.fecha|date:"d/m/Y" }}</td>
+                    <td class="text-center">
+                        {% if r.dias_en_direccion >= 7 %}
+                        <span class="badge bg-danger" title="Más de una semana en dirección">{{ r.dias_en_direccion }} d</span>
+                        {% elif r.dias_en_direccion >= 2 %}
+                        <span class="badge bg-warning text-dark">{{ r.dias_en_direccion }} d</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ r.dias_en_direccion }} d</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.lugar_entregado }}</td>
+                    <td class="text-center fw-bold">{{ conteo_celulares|get_item:r.alumno_id|default:0 }}</td>
+                    <td class="text-end">
+                        <form method="post" action="{% url 'entregar_celular' r.pk %}" class="d-inline-flex gap-1 align-items-center" onsubmit="return confirm('¿Confirmar que se entregó el teléfono de {{ r.alumno.nombre_completo }}?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="fecha" value="{{ fecha_iso }}">
+                            <select name="retiro" class="form-select form-select-sm" style="width:auto" required>
+                                {% for valor, etiqueta in retiro_opciones %}
+                                <option value="{{ valor }}">{{ etiqueta }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Entregar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No hay celulares pendientes de entrega.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="mt-3 d-flex justify-content-end">

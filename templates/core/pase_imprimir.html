@@ -6,31 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pase de ingreso — {{ atraso.alumno.nombre_completo }}</title>
     <style>
-        /* Pase 80 x 110 mm para impresora POS térmica. Impresión: el navegador
-           manda el papel 80x110 con margen 0 (controlamos toda la caja). */
-        @page { size: 80mm 110mm; margin: 0; }
+        /* Pase 80 x {{ alto_mm }} mm para impresora POS térmica. Impresión: el
+           navegador manda el papel con margen 0 (controlamos toda la caja).
+           El alto crece con el contenido (p. ej. una observación larga). */
+        @page { size: 80mm {{ alto_mm }}mm; margin: 0; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; background: #fff; }
         body {
-            width: 80mm; height: 110mm;
+            width: 80mm; height: {{ alto_mm }}mm;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
 
         .pase {
             position: relative;
-            width: 80mm; height: 110mm;
+            width: 80mm; height: {{ alto_mm }}mm;
             padding: 5mm 11mm 0;          /* superior / laterales 11 mm */
             background: #fff; color: #000;
         }
         .logo { height: 15mm; text-align: center; }
         .logo img { height: 15mm; width: auto; max-width: 58mm; }
-        .titulo { font-weight: 700; font-size: 9pt; line-height: 1.0; text-align: center; margin-top: 5.5mm; }
+        .titulo { font-weight: 700; font-size: {{ titulo_size }}pt; line-height: 1.0; text-align: center; margin-top: 5.5mm; }
         .regla { border-top: 1pt solid #000; margin-top: 2.8mm; }
 
         .campos { margin-top: 3.8mm; }
+        /* 9,2 mm por campo: el mismo ritmo vertical que usa el PDF. */
+        .campo { margin-bottom: 1.8mm; }
         .campo .rotulo { font-weight: 700; font-size: 9pt; line-height: 1.0; }
-        .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; }
+        .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; word-break: break-word; }
 
         .firma { margin-top: 4mm; }
         .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4.2mm; }
@@ -53,15 +56,13 @@
 <body>
     <div class="pase">
         <div class="logo"><img src="{% static 'img/logo_pase.png' %}" alt=""></div>
-        <div class="titulo">AUTORIZACION INGRESO A CLASES</div>
+        <div class="titulo">{{ titulo }}</div>
         <div class="regla"></div>
 
         <div class="campos">
-            <div class="campo"><div class="rotulo">FECHA:</div><div class="valor">{{ fecha }}</div></div>
-            <div class="campo"><div class="rotulo">NOMBRE ALUMNO:</div><div class="valor">{{ nombre }}</div></div>
-            <div class="campo"><div class="rotulo">CURSO:</div><div class="valor">{{ curso }}</div></div>
-            <div class="campo"><div class="rotulo">HORA:</div><div class="valor">{{ hora }}</div></div>
-            <div class="campo"><div class="rotulo">MOTIVO:</div><div class="valor">{{ motivo }}</div></div>
+            {% for c in campos %}
+            <div class="campo"><div class="rotulo">{{ c.rotulo }}</div><div class="valor">{{ c.valor }}</div></div>
+            {% endfor %}
         </div>
 
         <div class="firma">

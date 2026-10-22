@@ -103,10 +103,19 @@
     {% if uniformes %}
     <div class="table-custom mt-2">
         <table class="table table-sm mb-0">
-            <thead><tr><th>Fecha</th><th>Falta</th><th>Comprado</th><th>Llamado</th><th>Determinación</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Falta</th><th>Comprado</th><th>Llamado</th><th>Determinación</th><th class="text-end">Comunicado</th></tr></thead>
             <tbody>
                 {% for u in uniformes %}
-                <tr><td>{{ u.fecha|date:"d/m/Y" }}</td><td>{{ u.falta }}</td><td>{% if u.tiene_uniforme_comprado %}Sí{% else %}No{% endif %}</td><td>{% if u.llamado %}Sí{% else %}No{% endif %}</td><td class="small">{{ u.determinacion }}</td></tr>
+                <tr>
+                    <td>{{ u.fecha|date:"d/m/Y" }}</td>
+                    <td>{{ u.falta }}</td>
+                    <td>{% if u.tiene_uniforme_comprado %}Sí{% else %}No{% endif %}</td>
+                    <td>{% if u.llamado %}Sí{% else %}No{% endif %}</td>
+                    <td class="small">{{ u.determinacion }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'imprimir_comunicado_uniforme_ui' u.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Imprimir comunicado de falta de uniforme (POS 80 mm)" aria-label="Imprimir comunicado" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

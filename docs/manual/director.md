@@ -29,6 +29,13 @@ Los profesores (y tú) requisan los teléfonos desde **Celulares**. Cada registr
 4. En cada teléfono que todavía está en tu poder, elige la **modalidad de retiro** (*Al final del día* o *Retira apoderado*) y pulsa **Entregar**.
 5. Queda registrado el estado *Entregado* con la fecha, la hora y tu usuario. Puedes devolver el teléfono más de una vez si vuelve a ser requisado.
 
+### Pendientes de entrega
+Debajo de la tabla del día está la lista de **todos** los teléfonos que siguen en tu poder, de cualquier fecha, ordenados del más antiguo al más reciente:
+
+- La columna **Días** indica cuánto lleva esperando el teléfono (en rojo cuando lleva una semana o más).
+- Desde ahí mismo eliges la modalidad de retiro y pulsas **Entregar**, sin importar de qué día era la requisición.
+- El contador de la barra superior muestra cuántos pendientes hay en total, para que no se te escape ninguno.
+
 > La confirmación de entrega también puede realizarla el **administrador** del sistema.
 
 ## Registrar celulares

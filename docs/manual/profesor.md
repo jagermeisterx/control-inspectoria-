@@ -27,6 +27,8 @@ Ve a **Informes**:
 4. Usa el filtro de rango de fechas para acotar el período.
 5. Exporta con **PDF** o **Excel**.
 
+Desde el historial puedes imprimir los tickets de 80 mm: el ícono 🧾 de los atrasos abre el **pase de autorización de ingreso** (con la observación si el atraso la tiene) y el de las faltas de uniforme abre el **comunicado de falta de uniforme**. Se imprimen directamente en la impresora POS o con **Ver PDF**.
+
 ### Informe por Curso
 1. Elige primero el mes/año (o un rango de fechas) en la barra superior.
 2. Pulsa el botón PDF del curso deseado.

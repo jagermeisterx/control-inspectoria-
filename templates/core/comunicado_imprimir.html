@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comunicado de uniforme — {{ uniforme.alumno.nombre_completo }}</title>
+    <style>
+        /* Comunicado 80 x {{ alto_mm }} mm para impresora POS térmica, mismo
+           formato que el pase de atrasos. El alto crece con el contenido. */
+        @page { size: 80mm {{ alto_mm }}mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #fff; }
+        body {
+            width: 80mm; height: {{ alto_mm }}mm;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+
+        .pase {
+            position: relative;
+            width: 80mm; height: {{ alto_mm }}mm;
+            padding: 5mm 11mm 0;          /* superior / laterales 11 mm */
+            background: #fff; color: #000;
+        }
+        .logo { height: 15mm; text-align: center; }
+        .logo img { height: 15mm; width: auto; max-width: 58mm; }
+        .titulo { font-weight: 700; font-size: {{ titulo_size }}pt; line-height: 1.0; text-align: center; margin-top: 5.5mm; }
+        .regla { border-top: 1pt solid #000; margin-top: 2.8mm; }
+
+        .campos { margin-top: 3.8mm; }
+        /* 9,2 mm por campo: el mismo ritmo vertical que usa el PDF. */
+        .campo { margin-bottom: 1.8mm; }
+        .campo .rotulo { font-weight: 700; font-size: 9pt; line-height: 1.0; }
+        .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; word-break: break-word; }
+
+        .firma { margin-top: 4mm; }
+        .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4.2mm; }
+        /* Marca de corte anclada al pie (padding de la caja: 11 mm -> 69 mm) */
+        .corte { position: absolute; left: 0; right: 0; bottom: 6mm; border-top: 0.4pt dashed #000; }
+
+        /* Barra de acciones: solo al ver la pestaña, nunca al imprimir. */
+        .acciones { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10;
+                    display: flex; align-items: center; gap: .5rem; padding: .5rem .6rem; border-radius: .6rem;
+                    background: rgba(33, 37, 41, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .25); }
+        .acciones .ayuda { color: #adb5bd; font-size: .75rem; margin-right: .25rem; }
+        .btn { border: 0; border-radius: .45rem; padding: .35rem .8rem; font-size: .8rem; font-weight: 600;
+               cursor: pointer; text-decoration: none; }
+        .btn-primario { background: #0d6efd; color: #fff; }
+        .btn-primario:hover { background: #0b5ed7; }
+        .btn-secundario { background: transparent; color: #f8f9fa; border: 1px solid #6c757d; }
+        @media print { .acciones { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="pase">
+        <div class="logo"><img src="{% static 'img/logo_pase.png' %}" alt=""></div>
+        <div class="titulo">{{ titulo }}</div>
+        <div class="regla"></div>
+
+        <div class="campos">
+            {% for c in campos %}
+            <div class="campo"><div class="rotulo">{{ c.rotulo }}</div><div class="valor">{{ c.valor }}</div></div>
+            {% endfor %}
+        </div>
+
+        <div class="firma">
+            <div class="rotulo">TIMBRE Y FIRMA:</div>
+            <div class="linea-firma"></div>
+        </div>
+        <div class="corte"></div>
+    </div>
+
+    <div class="acciones">
+        <span class="ayuda">Si no se abre el diálogo, usa Imprimir</span>
+        <button type="button" class="btn btn-primario" onclick="imprimir()">Imprimir</button>
+        <a class="btn btn-secundario" href="{% url 'imprimir_comunicado_uniforme' uniforme.pk %}" target="_blank" rel="noopener">Ver PDF</a>
+    </div>
+
+    <script>
+        (function () {
+            var imprimido = false;
+
+            function imprimir() {
+                if (imprimido) return;
+                imprimido = true;
+                window.print();
+                // print() es modal en Chrome y Firefox: al volver, el diálogo ya
+                // se cerró. afterprint + respaldo por si el navegador no lo emite.
+                window.addEventListener("afterprint", function () { window.close(); });
+                setTimeout(function () { window.close(); }, 5000);
+            }
+            window.imprimir = imprimir;
+            window.addEventListener("load", function () { setTimeout(imprimir, 350); });
+        })();
+    </script>
+</body>
+</html>

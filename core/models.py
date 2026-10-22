@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 CURSOS = [
     ("PRE-KINDER", "Pre-Kinder"),
@@ -196,6 +197,13 @@ class Celular(models.Model):
 
     def __str__(self):
         return f"{self.alumno} - {self.fecha}"
+
+    @property
+    def dias_en_direccion(self):
+        """Días que el teléfono lleva en poder de la dirección."""
+        if self.estado != "EN_DIRECCION":
+            return 0
+        return max(0, (timezone.localdate() - self.fecha).days)
 
 
 class VisitaApoderado(models.Model):

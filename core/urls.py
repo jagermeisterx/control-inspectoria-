@@ -48,6 +48,9 @@ urlpatterns = [
     # Pase de autorización de ingreso (POS 80 mm)
     path("pase/atraso/<int:pk>/", views.imprimir_pase, name="imprimir_pase"),
     path("pase/atraso/<int:pk>/imprimir/", views.imprimir_pase_ui, name="imprimir_pase_ui"),
+    # Comunicado de falta de uniforme (POS 80 mm)
+    path("comunicado/uniforme/<int:pk>/", views.imprimir_comunicado_uniforme, name="imprimir_comunicado_uniforme"),
+    path("comunicado/uniforme/<int:pk>/imprimir/", views.imprimir_comunicado_uniforme_ui, name="imprimir_comunicado_uniforme_ui"),
     # API
     path("api/alumnos/", views.api_buscar_alumnos, name="api_buscar_alumnos"),
 ]
