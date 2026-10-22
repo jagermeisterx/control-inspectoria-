@@ -40,7 +40,7 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 ## Imprimir el comunicado de falta de uniforme
 1. En la tabla de uniformes, pulsa el ícono de ticket (🧾) de la fila.
 2. Se abre una pestaña con el comunicado en 80 mm (mismo formato que el pase) y se inicia el diálogo de impresión.
-3. El comunicado lleva fecha, nombre, curso, falta, si tiene uniforme comprado y si se llamó al apoderado; también el detalle, el teléfono del apoderado y la determinación cuando están registrados.
+3. El comunicado lleva fecha, nombre, curso y falta; también el detalle, el teléfono del apoderado y la determinación cuando están registrados. Todo va centrado en la bobina de 80 mm.
 4. Con **Ver PDF** puedes abrir el archivo en el visor e imprimirlo desde ahí.
 
 ## Requisar un celular

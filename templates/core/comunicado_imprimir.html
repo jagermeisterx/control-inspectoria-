@@ -34,6 +34,10 @@
         .campo .rotulo { font-weight: 700; font-size: 9pt; line-height: 1.0; }
         .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; word-break: break-word; }
 
+        /* Centrado: rótulos y valores al centro de la bobina. */
+        .pase-centrado .campo { text-align: center; }
+        .pase-centrado .firma .rotulo { text-align: center; }
+
         .firma { margin-top: 4mm; }
         .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4.2mm; }
         /* Marca de corte anclada al pie (padding de la caja: 11 mm -> 69 mm) */
@@ -53,7 +57,7 @@
     </style>
 </head>
 <body>
-    <div class="pase">
+    <div class="pase{% if centrado %} pase-centrado{% endif %}">
         <div class="logo"><img src="{% static 'img/logo_pase.png' %}" alt=""></div>
         <div class="titulo">{{ titulo }}</div>
         <div class="regla"></div>

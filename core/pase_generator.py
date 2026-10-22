@@ -174,15 +174,19 @@ def _envolver(texto, ancho_max, max_lineas, fuente, size):
     return [_cortar(l, ancho_max, fuente, size) for l in lineas]
 
 
-def _campo(c, rotulo, lineas, y):
+def _campo(c, rotulo, lineas, y, centrado=False):
     """Rótulo en negrita + valor en negrita debajo, sin línea punteada.
 
     lineas: líneas del valor ya ajustadas al ancho útil.
+    centrado: rótulo y valor centrados en la bobina (en vez de a la izquierda).
     Devuelve la Y para el siguiente rótulo.
     """
-    c.setFont(FUENTE_BOLD, F_ROTULO)
-    c.setFillColor(NEGRO)
-    c.drawString(X_ETIQUETAS, y, rotulo)
+    if centrado:
+        _centrado(c, rotulo, y, FUENTE_BOLD, F_ROTULO)
+    else:
+        c.setFont(FUENTE_BOLD, F_ROTULO)
+        c.setFillColor(NEGRO)
+        c.drawString(X_ETIQUETAS, y, rotulo)
 
     if not lineas:
         return y - ALTO_CAMPO
@@ -190,12 +194,16 @@ def _campo(c, rotulo, lineas, y):
     c.setFont(FUENTE_BOLD, F_VALOR)
     c.setFillColor(NEGRO)
     y_val = y - SALTO_ROTULO
-    for linea in lineas:
-        c.drawString(X_ETIQUETAS, y_val, linea)
-        y_val -= INTERLINEADO
-
-    extra = INTERLINEADO * max(0, len(lineas) - 1)
+    for i, linea in enumerate(lineas):
+        if centrado:
+            _centrado(c, linea, y_val, FUENTE_BOLD, F_VALOR)
+        else:
+            c.drawString(X_ETIQUETAS, y_val, linea)
+        if i < len(lineas) - 1:
+            y_val -= INTERLINEADO
+    extra = INTERLINEADO * (len(lineas) - 1)
     return y - ALTO_CAMPO - extra
+
 
 
 def _preparar_campos(campos):
@@ -234,12 +242,13 @@ def _alto_ficha(campos):
     return max(ALTO_MM, math.ceil((_alto_requerido(campos) + HOLGURA_PIE_MM) * 2) / 2)
 
 
-def _datos_comunes(titulo, campos):
+def _datos_comunes(titulo, campos, centrado=False):
     """Datos compartidos por el PDF y el HTML de cualquier ficha."""
     return {
         "titulo": titulo,
         "titulo_size": f"{_tamaño_titulo(titulo):g}",
         "campos": campos,
+        "centrado": centrado,
         "alto_mm": f"{_alto_ficha(_preparar_campos(campos)):g}",
     }
 
@@ -276,7 +285,7 @@ def datos_pase(alumno, atraso=None):
     if observacion:
         campos.append({"rotulo": "OBSERVACION:", "valor": observacion.upper(), "max_lineas": 5})
 
-    datos = _datos_comunes(TITULO_PASE, campos)
+    datos = _datos_comunes(TITULO_PASE, campos, centrado=False)
     datos.update({
         "fecha": fecha,
         "hora": hora,
@@ -308,10 +317,6 @@ def datos_comunicado(uniforme):
         {"rotulo": "NOMBRE ALUMNO:", "valor": alumno.nombre_completo.upper(), "max_lineas": 2},
         {"rotulo": "CURSO:", "valor": curso.upper(), "max_lineas": 1},
         {"rotulo": "FALTA:", "valor": falta.upper(), "max_lineas": 2},
-        {"rotulo": "UNIFORME COMPRADO:", "valor": "SI" if uniforme.tiene_uniforme_comprado else "NO",
-         "max_lineas": 1},
-        {"rotulo": "SE LLAMO AL APODERADO:", "valor": "SI" if uniforme.llamado else "NO",
-         "max_lineas": 1},
     ]
     if detalle:
         campos.append({"rotulo": "OBSERVACION:", "valor": detalle.upper(), "max_lineas": 4})
@@ -320,7 +325,7 @@ def datos_comunicado(uniforme):
     if determinacion:
         campos.append({"rotulo": "DETERMINACION:", "valor": determinacion.upper(), "max_lineas": 2})
 
-    datos = _datos_comunes(TITULO_COMUNICADO, campos)
+    datos = _datos_comunes(TITULO_COMUNICADO, campos, centrado=True)
     datos.update({
         "fecha": uniforme.fecha.strftime("%d/%m/%Y"),
         "nombre": alumno.nombre_completo.upper(),
@@ -332,11 +337,13 @@ def datos_comunicado(uniforme):
     return datos
 
 
-def generar_pdf_ficha(titulo, campos, nombre="ficha"):
+def generar_pdf_ficha(titulo, campos, nombre="ficha", centrado=False):
     """Dibuja una ficha de 80 mm con los campos indicados y devuelve un BytesIO.
 
     titulo : texto centrado bajo el logo
     campos : lista de dicts {"rotulo", "valor", "max_lineas"}
+    centrado : centra rótulos y valores en la bobina (en vez de alinearlos
+               a la izquierda)
     """
     ajustados = _preparar_campos(campos)
     alto_mm = _alto_ficha(ajustados)
@@ -363,12 +370,15 @@ def generar_pdf_ficha(titulo, campos, nombre="ficha"):
 
     y -= GAP_REGLA_ROTULO
     for campo in ajustados:
-        y = _campo(c, campo["rotulo"], campo["lineas"], y)
+        y = _campo(c, campo["rotulo"], campo["lineas"], y, centrado)
 
     # ── Timbre y firma: se deja en blanco para completar a mano ──
-    c.setFont(FUENTE_BOLD, F_ROTULO)
-    c.setFillColor(NEGRO)
-    c.drawString(X_ETIQUETAS, y, "TIMBRE Y FIRMA:")
+    if centrado:
+        _centrado(c, "TIMBRE Y FIRMA:", y, FUENTE_BOLD, F_ROTULO)
+    else:
+        c.setFont(FUENTE_BOLD, F_ROTULO)
+        c.setFillColor(NEGRO)
+        c.drawString(X_ETIQUETAS, y, "TIMBRE Y FIRMA:")
     _linea(c, x0, y - SALTO_ROTULO, x1, GROSOR_FIRMA, NEGRO, punteada=True)
 
     # ── Marca de corte para la impresora POS ──
@@ -395,4 +405,4 @@ def generar_pdf_comunicado(uniforme):
     """Genera el comunicado de falta de uniforme en PDF de 80 mm (BytesIO)."""
     d = datos_comunicado(uniforme)
     nombre = f"Comunicado uniforme {uniforme.alumno.nombre_completo}"
-    return generar_pdf_ficha(d["titulo"], d["campos"], nombre=nombre)
+    return generar_pdf_ficha(d["titulo"], d["campos"], nombre=nombre, centrado=d["centrado"])
