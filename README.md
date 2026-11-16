@@ -1,6 +1,6 @@
 # 🏫 Inspectoría Digital
 
-Sistema web para gestión de inspectoría escolar. Registra retiros, atrasos, control de uniformes, celulares requisados y visitas de apoderados. Genera reportes por alumno y por curso en PDF y Excel.
+Sistema web para gestión de inspectoría escolar. Registra retiros, atrasos, control de uniformes, celulares requisados y visitas de apoderados. Genera reportes por alumno y por curso en PDF y Excel, además de un cuadro comparativo de faltas por curso exportable en PowerPoint (.pptx) y PDF.
 
 ## Instalación local
 

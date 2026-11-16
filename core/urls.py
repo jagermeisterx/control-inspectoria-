@@ -36,6 +36,7 @@ urlpatterns = [
     path("reportes/desde-excel/pdf/", views.reporte_desde_excel_pdf, name="reporte_desde_excel_pdf"),
     path("reportes/desde-excel/plantilla.xlsx", views.descargar_plantilla_atrasos, name="descargar_plantilla_atrasos"),
     path("reportes/frecuencia-faltas/", views.frecuencia_faltas, name="frecuencia_faltas"),
+    path("reportes/comparativo-cursos/", views.comparativo_cursos, name="comparativo_cursos"),
     # Exportaciones
     path("exportar/pdf/alumno/<int:pk>/", views.exportar_pdf_alumno, name="exportar_pdf_alumno"),
     path("exportar/pdf/curso/<str:curso>/", views.exportar_pdf_curso, name="exportar_pdf_curso"),
@@ -45,6 +46,8 @@ urlpatterns = [
     path("exportar/excel/general/", views.exportar_excel_general, name="exportar_excel_general"),
     path("exportar/excel/frecuencia-faltas/", views.exportar_excel_frecuencia_faltas, name="exportar_excel_frecuencia_faltas"),
     path("exportar/pdf/frecuencia-faltas/", views.exportar_pdf_frecuencia_faltas, name="exportar_pdf_frecuencia_faltas"),
+    path("exportar/pptx/comparativo-cursos/", views.exportar_pptx_comparativo_cursos, name="exportar_pptx_comparativo_cursos"),
+    path("exportar/pdf/comparativo-cursos/", views.exportar_pdf_comparativo_cursos, name="exportar_pdf_comparativo_cursos"),
     # Pase de autorización de ingreso (POS 80 mm)
     path("pase/atraso/<int:pk>/", views.imprimir_pase, name="imprimir_pase"),
     path("pase/atraso/<int:pk>/imprimir/", views.imprimir_pase_ui, name="imprimir_pase_ui"),

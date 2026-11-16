@@ -1,0 +1,122 @@
+{% extends "core/base.html" %}
+{% block title %}Comparativo de Cursos — Inspectoría Digital{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-bar-chart-line"></i> Cuadro Comparativo de Cursos</h1>
+        <span class="page-header-meta">{{ periodo_label }} · Información agregada por curso</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'exportar_pptx_comparativo_cursos' %}?{{ request.GET.urlencode }}" class="btn btn-danger btn-sm">
+            <i class="bi bi-file-earmark-slides"></i> Descargar PPTX
+        </a>
+        <a href="{% url 'exportar_pdf_comparativo_cursos' %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-pdf"></i> Descargar PDF
+        </a>
+    </div>
+</div>
+
+<div class="filter-bar d-flex flex-wrap gap-2 align-items-center mb-4">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+        <label class="small fw-semibold text-muted">Mes/Año:</label>
+        <select name="mes" class="form-select form-select-sm" style="max-width:130px">
+            {% for m, label in meses_opciones %}
+            <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="anio" class="form-select form-select-sm" style="max-width:100px">
+            {% for a in anios_opciones %}
+            <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        <div class="vr" style="height:20px"></div>
+        <label class="small fw-semibold text-muted">Rango:</label>
+        <input type="date" name="fecha_desde" value="{{ fecha_desde_str }}" class="form-control form-control-sm" style="max-width:155px" title="Desde">
+        <span class="text-muted">a</span>
+        <input type="date" name="fecha_hasta" value="{{ fecha_hasta_str }}" class="form-control form-control-sm" style="max-width:155px" title="Hasta">
+        <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        {% if usa_rango or request.GET %}<a href="{% url 'comparativo_cursos' %}" class="btn btn-sm btn-link">Limpiar</a>{% endif %}
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ totales.cursos }}</div>
+            <div class="stat-label">Cursos con faltas</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--warning)">{{ totales.atrasos }}</div>
+            <div class="stat-label">Atrasos</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:#7c3aed">{{ totales.uniformes }}</div>
+            <div class="stat-label">Faltas de uniforme</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="color:var(--info)">{{ totales.celulares }}</div>
+            <div class="stat-label">Celulares requisados</div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-4" role="alert">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div class="small">
+        Este informe incluye únicamente información agregada por curso. No muestra nombres ni datos
+        individuales de alumnos. Los atrasos con motivo <strong>CAMPO</strong> no se contabilizan.
+        El archivo PPTX contiene portada, resumen, cuadro comparativo y gráficos; el PDF replica esas
+        mismas diapositivas.
+    </div>
+</div>
+
+<div class="card-custom">
+    <h6 class="fw-bold mb-3">
+        <i class="bi bi-table"></i> Comparativo de faltas por curso — {{ periodo_label }}
+    </h6>
+    <div class="table-custom">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Curso</th>
+                    <th class="text-center">Atrasos</th>
+                    <th class="text-center">Uniformes</th>
+                    <th class="text-center">Celulares</th>
+                    <th class="text-center">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in filas %}
+                <tr>
+                    <td class="fw-semibold">{{ f.curso_label }}</td>
+                    <td class="text-center">{% if f.atrasos %}<span class="badge" style="background:var(--warning)">{{ f.atrasos }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.uniformes %}<span class="badge" style="background:#7c3aed">{{ f.uniformes }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center">{% if f.celulares %}<span class="badge" style="background:var(--info)">{{ f.celulares }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                    <td class="text-center fw-bold">{{ f.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No se registraron faltas en el período seleccionado.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+            <tfoot>
+                <tr class="fw-bold">
+                    <td>Total general ({{ totales.cursos }} cursos)</td>
+                    <td class="text-center">{{ totales.atrasos }}</td>
+                    <td class="text-center">{{ totales.uniformes }}</td>
+                    <td class="text-center">{{ totales.celulares }}</td>
+                    <td class="text-center">{{ totales.total }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

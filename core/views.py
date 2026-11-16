@@ -884,6 +884,93 @@ def exportar_pdf_frecuencia_faltas(request):
     return resp
 
 
+# ── Comparativo de cursos (PPTX/PDF) ──
+def _params_comparativo(request):
+    from .pdf_generator import MESES
+    hoy = date.today()
+    try:
+        mes = int(request.GET.get("mes", hoy.month))
+    except (TypeError, ValueError):
+        mes = hoy.month
+    if not 1 <= mes <= 12:
+        mes = hoy.month
+    try:
+        anio = int(request.GET.get("anio", hoy.year))
+    except (TypeError, ValueError):
+        anio = hoy.year
+    fecha_desde = _parse_fecha(request.GET.get("fecha_desde", "").strip())
+    fecha_hasta = _parse_fecha(request.GET.get("fecha_hasta", "").strip())
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        fecha_desde, fecha_hasta = fecha_hasta, fecha_desde
+    return {
+        "mes": mes,
+        "anio": anio,
+        "fecha_desde_str": fecha_desde.isoformat() if fecha_desde else "",
+        "fecha_hasta_str": fecha_hasta.isoformat() if fecha_hasta else "",
+        "usa_rango": bool(fecha_desde or fecha_hasta),
+        "meses_opciones": list(MESES.items()),
+        "anios_opciones": sorted({hoy.year, hoy.year - 1}, reverse=True),
+    }
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def comparativo_cursos(request):
+    from .comparativo_generator import obtener_datos_comparativo
+    p = _params_comparativo(request)
+    datos = obtener_datos_comparativo(
+        mes=p["mes"], anio=p["anio"],
+        fecha_desde=p["fecha_desde_str"] or None,
+        fecha_hasta=p["fecha_hasta_str"] or None,
+    )
+    return render(request, "core/comparativo_cursos.html", {
+        **p,
+        "filas": datos["filas"],
+        "totales": datos["totales"],
+        "periodo_label": datos["periodo_label"],
+    })
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def exportar_pptx_comparativo_cursos(request):
+    from .comparativo_generator import (
+        generar_pptx_comparativo, nombre_archivo_comparativo, obtener_datos_comparativo,
+    )
+    p = _params_comparativo(request)
+    datos = obtener_datos_comparativo(
+        mes=p["mes"], anio=p["anio"],
+        fecha_desde=p["fecha_desde_str"] or None,
+        fecha_hasta=p["fecha_hasta_str"] or None,
+    )
+    buf = generar_pptx_comparativo(datos)
+    resp = HttpResponse(
+        buf,
+        content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="{nombre_archivo_comparativo(datos, "pptx")}"'
+    )
+    return resp
+
+
+@rol_requerido(INSPECTOR_GENERAL, DIRECTOR)
+def exportar_pdf_comparativo_cursos(request):
+    from .comparativo_generator import (
+        generar_pdf_comparativo, nombre_archivo_comparativo, obtener_datos_comparativo,
+    )
+    p = _params_comparativo(request)
+    datos = obtener_datos_comparativo(
+        mes=p["mes"], anio=p["anio"],
+        fecha_desde=p["fecha_desde_str"] or None,
+        fecha_hasta=p["fecha_hasta_str"] or None,
+    )
+    buf = generar_pdf_comparativo(datos)
+    resp = HttpResponse(buf, content_type="application/pdf")
+    resp["Content-Disposition"] = (
+        f'attachment; filename="{nombre_archivo_comparativo(datos, "pdf")}"'
+    )
+    return resp
+
+
 def _metricas_mes(mes, anio):
     return {
         "retiros": Retiro.objects.filter(fecha__month=mes, fecha__year=anio).count(),
