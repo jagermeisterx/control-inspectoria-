@@ -92,6 +92,23 @@ Abrir http://localhost:8000
 - **Sin disco persistente**: no guardar archivos subidos en `media/`. Los Excel/PDF se procesan en memoria.
 - **Migraciones**: corren automáticamente antes de cada release (`release:` en Procfile).
 
+## Impresión de pases (POS-58)
+
+El **pase de ingreso** y el **comunicado de uniforme** se imprimen directo al
+cabezal en ESC/POS mediante un agente local que corre en el PC de inspectoría.
+Así no interviene el diálogo del navegador ni el escalado del driver: no queda
+papel en blanco al inicio/final y el texto sale alineado a la bobina de 58 mm.
+
+1. Copiar la carpeta [`impresora_local/`](impresora_local/LEEME.md) a un lugar
+   fijo del PC Windows (por ejemplo `C:\Inspectoria\impresora_local`).
+2. Ejecutar `INICIAR.bat` y probar con `PROBAR.bat`.
+3. Ejecutar `INSTALAR_ARRANQUE.bat` para que el agente parta con Windows.
+
+Si el agente no está activo, la pestaña del pase usa el diálogo del navegador
+como respaldo, con el HTML y el PDF ya ajustados a 58 mm. Los detalles de
+configuración y diagnóstico están en
+[`impresora_local/LEEME.md`](impresora_local/LEEME.md).
+
 ## Importar alumnos
 
 Preparar un archivo .xlsx con columnas en este orden:

@@ -6,45 +6,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pase de ingreso — {{ atraso.alumno.nombre_completo }}</title>
     <style>
-        /* Pase 80 x {{ alto_mm }} mm para impresora POS térmica. Impresión: el
-           navegador manda el papel con margen 0 (controlamos toda la caja).
-           El alto crece con el contenido (p. ej. una observación larga). */
-        @page { size: 80mm {{ alto_mm }}mm; margin: 0; }
+        /* Pase 58 mm (POS-58). Impresión principal: el agente local manda el
+           ticket ESC/POS directo al cabezal, sin driver ni diálogo. Este HTML
+           queda como respaldo y coincide con el PDF: 58 mm, margen 0. */
+        @page { size: 58mm {{ alto_mm }}mm; margin: 0; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; background: #fff; }
         body {
-            width: 80mm; height: {{ alto_mm }}mm;
+            width: 58mm; height: {{ alto_mm }}mm;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
 
         .pase {
             position: relative;
-            width: 80mm; height: {{ alto_mm }}mm;
-            padding: 5mm 11mm 0;          /* superior / laterales 11 mm */
+            width: 58mm; height: {{ alto_mm }}mm;
+            padding: 4mm 5mm 0;           /* superior / laterales 5 mm */
             background: #fff; color: #000;
         }
         .logo { height: 15mm; text-align: center; }
-        .logo img { height: 15mm; width: auto; max-width: 58mm; }
-        .titulo { font-weight: 700; font-size: {{ titulo_size }}pt; line-height: 1.0; text-align: center; margin-top: 5.5mm; }
-        .regla { border-top: 1pt solid #000; margin-top: 2.8mm; }
+        .logo img { height: 15mm; width: auto; max-width: 46mm; }
+        .titulo { font-weight: 700; font-size: {{ titulo_size }}pt; line-height: 1.0; text-align: center; margin-top: 5mm; }
+        .regla { border-top: 1pt solid #000; margin-top: 2.5mm; }
 
-        .campos { margin-top: 3.8mm; }
-        /* 9,2 mm por campo: el mismo ritmo vertical que usa el PDF. */
+        .campos { margin-top: 3.5mm; }
         .campo { margin-bottom: 1.8mm; }
         .campo .rotulo { font-weight: 700; font-size: 9pt; line-height: 1.0; }
-        .campo .valor { font-weight: 700; font-size: 11pt; line-height: 1.08; word-break: break-word; }
+        .campo .valor { font-weight: 700; font-size: 10.5pt; line-height: 1.08; word-break: break-word; }
 
         .firma { margin-top: 4mm; }
-        .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4.2mm; }
-        /* Marca de corte anclada al pie (padding de la caja: 11 mm -> 69 mm) */
-        .corte { position: absolute; left: 0; right: 0; bottom: 6mm; border-top: 0.4pt dashed #000; }
+        .linea-firma { border-top: 0.5pt dashed #000; margin-top: 4mm; }
+        .corte { position: absolute; left: 0; right: 0; bottom: 5mm; border-top: 0.4pt dashed #000; }
 
         /* Barra de acciones: solo al ver la pestaña, nunca al imprimir. */
         .acciones { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10;
-                    display: flex; align-items: center; gap: .5rem; padding: .5rem .6rem; border-radius: .6rem;
+                    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+                    gap: .5rem; max-width: 96vw; padding: .5rem .6rem; border-radius: .6rem;
                     background: rgba(33, 37, 41, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .25); }
-        .acciones .ayuda { color: #adb5bd; font-size: .75rem; margin-right: .25rem; }
+        .acciones .estado { color: #ced4da; font-size: .72rem; margin-right: .25rem; white-space: normal; }
         .btn { border: 0; border-radius: .45rem; padding: .35rem .8rem; font-size: .8rem; font-weight: 600;
                cursor: pointer; text-decoration: none; }
         .btn-primario { background: #0d6efd; color: #fff; }
@@ -53,7 +52,7 @@
         @media print { .acciones { display: none; } }
     </style>
 </head>
-<body>
+<body data-escpos-url="{% url 'escpos_pase' atraso.pk %}">
     <div class="pase">
         <div class="logo"><img src="{% static 'img/logo_pase.png' %}" alt=""></div>
         <div class="titulo">{{ titulo }}</div>
@@ -73,26 +72,99 @@
     </div>
 
     <div class="acciones">
-        <span class="ayuda">Si no se abre el diálogo, usa Imprimir</span>
-        <button type="button" class="btn btn-primario" onclick="imprimir()">Imprimir</button>
+        <span class="estado" id="estado" aria-live="polite">Buscando la impresora local…</span>
+        <button type="button" class="btn btn-primario" id="btn-imprimir" onclick="imprimir()">Imprimir</button>
         <a class="btn btn-secundario" href="{% url 'imprimir_pase' atraso.pk %}" target="_blank" rel="noopener">Ver PDF</a>
     </div>
 
     <script>
         (function () {
-            var imprimido = false;
+            // Agente local (impresora_local/): escucha solo en este PC y manda
+            // el ticket ESC/POS en RAW. Si no está corriendo, se usa el
+            // diálogo del navegador como respaldo.
+            var AGENTE = "http://127.0.0.1:9110";
+            var urlEscpos = document.body.getAttribute("data-escpos-url");
+            var estado = document.getElementById("estado");
+            var imprimiendo = false;
+
+            function ponerEstado(texto) {
+                if (estado) estado.textContent = texto;
+            }
+
+            function conTimeout(promesa, ms) {
+                return new Promise(function (resolve, reject) {
+                    var t = setTimeout(function () { reject(new Error("sin respuesta")); }, ms);
+                    promesa.then(function (v) { clearTimeout(t); resolve(v); },
+                                 function (e) { clearTimeout(t); reject(e); });
+                });
+            }
+
+            function aBase64(buffer) {
+                var bytes = new Uint8Array(buffer);
+                var binario = "";
+                for (var i = 0; i < bytes.length; i++) binario += String.fromCharCode(bytes[i]);
+                return btoa(binario);
+            }
+
+            function consultarAgente() {
+                return conTimeout(fetch(AGENTE + "/estado", { cache: "no-store" }), 1200)
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .catch(function () { return null; });
+            }
+
+            function imprimirEnAgente(info) {
+                ponerEstado("Imprimiendo en " + (info.impresora || "POS-58") + "…");
+                return conTimeout(fetch(urlEscpos, { cache: "no-store", credentials: "same-origin" }), 8000)
+                    .then(function (r) {
+                        var tipo = r.headers.get("content-type") || "";
+                        if (!r.ok || tipo.indexOf("application/octet-stream") === -1) {
+                            throw new Error("no se pudo generar el ticket");
+                        }
+                        return r.arrayBuffer();
+                    })
+                    .then(function (buffer) {
+                        return conTimeout(fetch(AGENTE + "/imprimir", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "X-Agente": "inspectoria" },
+                            body: JSON.stringify({ formato: "escpos", datos_base64: aBase64(buffer) })
+                        }), 15000);
+                    })
+                    .then(function (r) { return r.ok ? r.json() : null; });
+            }
+
+            function imprimirEnNavegador() {
+                ponerEstado("Sin agente local: en el diálogo elige papel 58 mm y escala 100 %");
+                setTimeout(function () { window.print(); }, 500);
+                window.addEventListener("afterprint", function () { window.close(); });
+                setTimeout(function () { window.close(); }, 8000);
+            }
 
             function imprimir() {
-                if (imprimido) return;
-                imprimido = true;
-                window.print();
-                // print() es modal en Chrome y Firefox: al volver, el diálogo ya
-                // se cerró. afterprint + respaldo por si el navegador no lo emite.
-                window.addEventListener("afterprint", function () { window.close(); });
-                setTimeout(function () { window.close(); }, 5000);
+                if (imprimiendo) return;
+                imprimiendo = true;
+                ponerEstado("Buscando la impresora local…");
+                consultarAgente().then(function (info) {
+                    if (!info || !info.ok) {
+                        imprimiendo = false;
+                        imprimirEnNavegador();
+                        return;
+                    }
+                    return imprimirEnAgente(info).then(function (res) {
+                        if (res && res.ok) {
+                            ponerEstado("Enviado a " + (res.impresora || "la impresora"));
+                            setTimeout(function () { window.close(); }, 900);
+                        } else {
+                            imprimiendo = false;
+                            ponerEstado("Error: " + ((res && res.error) || "revisa el agente local"));
+                        }
+                    }).catch(function (e) {
+                        imprimiendo = false;
+                        ponerEstado("Error: " + (e && e.message ? e.message : e));
+                    });
+                });
             }
             window.imprimir = imprimir;
-            window.addEventListener("load", function () { setTimeout(imprimir, 350); });
+            window.addEventListener("load", function () { setTimeout(imprimir, 400); });
         })();
     </script>
 </body>

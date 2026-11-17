@@ -48,12 +48,14 @@ urlpatterns = [
     path("exportar/pdf/frecuencia-faltas/", views.exportar_pdf_frecuencia_faltas, name="exportar_pdf_frecuencia_faltas"),
     path("exportar/pptx/comparativo-cursos/", views.exportar_pptx_comparativo_cursos, name="exportar_pptx_comparativo_cursos"),
     path("exportar/pdf/comparativo-cursos/", views.exportar_pdf_comparativo_cursos, name="exportar_pdf_comparativo_cursos"),
-    # Pase de autorización de ingreso (POS 80 mm)
+    # Pase de autorización de ingreso (POS 58 mm)
     path("pase/atraso/<int:pk>/", views.imprimir_pase, name="imprimir_pase"),
     path("pase/atraso/<int:pk>/imprimir/", views.imprimir_pase_ui, name="imprimir_pase_ui"),
-    # Comunicado de falta de uniforme (POS 80 mm)
+    path("pase/atraso/<int:pk>/escpos/", views.escpos_pase, name="escpos_pase"),
+    # Comunicado de falta de uniforme (POS 58 mm)
     path("comunicado/uniforme/<int:pk>/", views.imprimir_comunicado_uniforme, name="imprimir_comunicado_uniforme"),
     path("comunicado/uniforme/<int:pk>/imprimir/", views.imprimir_comunicado_uniforme_ui, name="imprimir_comunicado_uniforme_ui"),
+    path("comunicado/uniforme/<int:pk>/escpos/", views.escpos_comunicado_uniforme, name="escpos_comunicado_uniforme"),
     # API
     path("api/alumnos/", views.api_buscar_alumnos, name="api_buscar_alumnos"),
 ]

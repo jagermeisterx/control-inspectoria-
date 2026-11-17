@@ -5,3 +5,4 @@ __pycache__/
 staticfiles/
 media/
 datos/
+impresora_local/agente.log

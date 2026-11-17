@@ -1188,7 +1188,7 @@ def exportar_pdf_alumno(request, pk):
 
 @rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
 def imprimir_pase(request, pk):
-    """Pase de autorización de ingreso a clases en 80 mm para impresora POS."""
+    """Pase de autorización de ingreso a clases en 58 mm (PDF de respaldo)."""
     from .pase_generator import generar_pdf_pase
     atraso = get_object_or_404(Atraso.objects.select_related("alumno"), pk=pk)
     buf = generar_pdf_pase(atraso.alumno, atraso)
@@ -1214,8 +1214,19 @@ def imprimir_pase_ui(request, pk):
 
 
 @rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def escpos_pase(request, pk):
+    """Ticket ESC/POS del pase (bytes crudos) para el agente local."""
+    from .escpos_generator import generar_escpos_pase
+    atraso = get_object_or_404(Atraso.objects.select_related("alumno"), pk=pk)
+    resp = HttpResponse(generar_escpos_pase(atraso), content_type="application/octet-stream")
+    resp["Content-Disposition"] = f'inline; filename="pase_{atraso.id}.escpos"'
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
 def imprimir_comunicado_uniforme(request, pk):
-    """Comunicado de falta de uniforme en 80 mm para impresora POS."""
+    """Comunicado de falta de uniforme en 58 mm (PDF de respaldo)."""
     from .pase_generator import generar_pdf_comunicado
     uniforme = get_object_or_404(ControlUniforme.objects.select_related("alumno"), pk=pk)
     buf = generar_pdf_comunicado(uniforme)
@@ -1237,6 +1248,17 @@ def imprimir_comunicado_uniforme_ui(request, pk):
     ctx = datos_comunicado(uniforme)
     ctx["uniforme"] = uniforme
     return render(request, "core/comunicado_imprimir.html", ctx)
+
+
+@rol_requerido(INSPECTOR_GENERAL, INSPECTOR, PROFESOR, DIRECTOR)
+def escpos_comunicado_uniforme(request, pk):
+    """Ticket ESC/POS del comunicado (bytes crudos) para el agente local."""
+    from .escpos_generator import generar_escpos_comunicado
+    uniforme = get_object_or_404(ControlUniforme.objects.select_related("alumno"), pk=pk)
+    resp = HttpResponse(generar_escpos_comunicado(uniforme), content_type="application/octet-stream")
+    resp["Content-Disposition"] = f'inline; filename="comunicado_uniforme_{uniforme.id}.escpos"'
+    resp["Cache-Control"] = "no-store"
+    return resp
 
 
 @rol_requerido(INSPECTOR_GENERAL, PROFESOR, DIRECTOR)

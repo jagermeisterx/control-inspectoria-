@@ -1,16 +1,20 @@
 """
-Generador de fichas de 80 mm para impresora POS (bobina térmica) — Inspectoría General
+Generador de fichas de 58 mm para impresora POS (bobina térmica) — Inspectoría General
 
 Documentos que produce:
   · Pase de autorización de ingreso a clases  → core.models.Atraso
   · Comunicación de falta de uniforme          → core.models.ControlUniforme
 
 El pase reproduce el documento físico de la carpeta actualizacion-datps/pase-ejemplo.jpeg
-en formato vertical de 80 mm para impresora POS (bobina térmica).
+en formato vertical de 58 mm para impresora POS (bobina térmica).
 
 El pase original es apaisado; acá los campos se reordenan en vertical porque
 la bobina POS imprime de lado a lado. La sección "TIMBRE Y FIRMA" se imprime
 como línea punteada vacía, para completar a mano.
+
+Este módulo alimenta el PDF y el HTML de respaldo. La impresión principal del
+día a día usa core/escpos_generator.py (directo al cabezal, sin driver).
+La versión HTML/PDF mantiene el mismo contenido y un alto variable.
 
 Diseño pensado para térmico en blanco y negro:
   · solo negro puro (#000000): los grises se tramadan y salen borrosos
@@ -37,11 +41,11 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas as pdfcanvas
 
 # ── Configuración de la bobina ──
-ANCHO_MM = 80
+ANCHO_MM = 58          # POS-58: bobina de 58 mm (~48 mm imprimibles)
 ALTO_MM = 110
-# Los cabezales POS no imprimen hasta el borde de la bobina de 80 mm y el
-# corte a la izquierda salía más marcado, así que el margen va generoso.
-MARGEN_X = 11
+# Dejamos 5 mm por lado: la POS-58 imprime hasta ~48 mm y así ningún texto
+# queda fuera del área del cabezal.
+MARGEN_X = 5
 MARGEN_Y = 4
 
 # ── Encabezado ──
@@ -56,7 +60,7 @@ TITULO_COMUNICADO = "COMUNICACION FALTA DE UNIFORME"
 # ── Tipografía ──
 FUENTE = "Helvetica"
 FUENTE_BOLD = "Helvetica-Bold"
-F_TITULO = 9  # 11 pt mide 69,4 mm y 10 pt 63,1 mm; con 58 mm útiles solo entra 9 pt (56,8 mm)
+F_TITULO = 9  # con 48 mm útiles el título de 30 caracteres baja a ~7,5 pt
 F_TITULO_MINIMO = 6  # el título se achica hasta este punto antes que no entrar
 F_ROTULO = 9
 F_VALOR = 11
@@ -338,7 +342,7 @@ def datos_comunicado(uniforme):
 
 
 def generar_pdf_ficha(titulo, campos, nombre="ficha", centrado=False):
-    """Dibuja una ficha de 80 mm con los campos indicados y devuelve un BytesIO.
+    """Dibuja una ficha de 58 mm con los campos indicados y devuelve un BytesIO.
 
     titulo : texto centrado bajo el logo
     campos : lista de dicts {"rotulo", "valor", "max_lineas"}
@@ -391,7 +395,7 @@ def generar_pdf_ficha(titulo, campos, nombre="ficha", centrado=False):
 
 
 def generar_pdf_pase(alumno, atraso=None):
-    """Genera el pase de autorización en PDF de 80 mm y devuelve un BytesIO.
+    """Genera el pase de autorización en PDF de 58 mm y devuelve un BytesIO.
 
     alumno : instancia de core.models.Alumno
     atraso : instancia de core.models.Atraso (opcional; si falta, los campos
@@ -402,7 +406,7 @@ def generar_pdf_pase(alumno, atraso=None):
 
 
 def generar_pdf_comunicado(uniforme):
-    """Genera el comunicado de falta de uniforme en PDF de 80 mm (BytesIO)."""
+    """Genera el comunicado de falta de uniforme en PDF de 58 mm (BytesIO)."""
     d = datos_comunicado(uniforme)
     nombre = f"Comunicado uniforme {uniforme.alumno.nombre_completo}"
     return generar_pdf_ficha(d["titulo"], d["campos"], nombre=nombre, centrado=d["centrado"])

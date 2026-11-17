@@ -18,9 +18,11 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 
 ## Imprimir el pase de un atraso
 1. En la tabla de atrasos, pulsa el ícono de ticket (🧾) de la fila.
-2. Se abre una pestaña con el pase en 80 mm listo para la impresora POS y se inicia el diálogo de impresión.
+2. Se abre una pestaña con el pase en 58 mm y se envía directo a la POS-58 mediante el agente local, sin diálogo del navegador. Si el PC no tiene el agente activo, se abre el diálogo de impresión como respaldo.
 3. El pase lleva fecha, nombre, curso, hora y motivo; si el atraso tiene **observación**, también sale impresa.
 4. Con **Ver PDF** puedes abrir el archivo en el visor e imprimirlo desde ahí.
+
+> Si aparece el aviso **"Sin agente local"**, la impresora se sigue usando con el diálogo del navegador (elige papel de 58 mm y escala 100 %). Para recuperar la impresión directa, avisa al administrador para revisar el agente de impresión del PC.
 
 ## Registrar un retiro anticipado
 1. Ve a **Retiros**.
@@ -39,9 +41,11 @@ Rol operativo de registro diario. Puede anotar atrasos, retiros, faltas de unifo
 
 ## Imprimir el comunicado de falta de uniforme
 1. En la tabla de uniformes, pulsa el ícono de ticket (🧾) de la fila.
-2. Se abre una pestaña con el comunicado en 80 mm (mismo formato que el pase) y se inicia el diálogo de impresión.
-3. El comunicado lleva fecha, nombre, curso y falta; también el detalle, el teléfono del apoderado y la determinación cuando están registrados. Todo va centrado en la bobina de 80 mm.
+2. Se abre una pestaña con el comunicado en 58 mm (mismo formato que el pase) y se envía directo a la POS-58 con el agente local. Sin agente, se abre el diálogo de impresión como respaldo.
+3. El comunicado lleva fecha, nombre, curso y falta; también el detalle, el teléfono del apoderado y la determinación cuando están registrados. Todo va centrado en la bobina de 58 mm.
 4. Con **Ver PDF** puedes abrir el archivo en el visor e imprimirlo desde ahí.
+
+> Si aparece el aviso **"Sin agente local"**, el comunicado se imprime con el diálogo del navegador (papel de 58 mm y escala 100 %). Para la impresión directa, avisa al administrador.
 
 ## Requisar un celular
 1. Ve a **Celulares**.

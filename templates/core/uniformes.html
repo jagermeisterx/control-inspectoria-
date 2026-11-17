@@ -60,7 +60,7 @@
                 <td><span class="badge badge-curso">{{ r.alumno.curso }}</span></td>
                 <td>{{ r.falta }}</td>
                 <td class="text-end">
-                    <a href="{% url 'imprimir_comunicado_uniforme_ui' r.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Imprimir comunicado de falta de uniforme (POS 80 mm)" aria-label="Imprimir comunicado" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
+                    <a href="{% url 'imprimir_comunicado_uniforme_ui' r.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Imprimir comunicado de falta de uniforme (POS 58 mm)" aria-label="Imprimir comunicado" onclick="window.open(this.href, '_blank'); return false;"><i class="bi bi-receipt"></i></a>
                 </td>
                 {% if user|tiene_rol:'inspector_general' %}
                 <td>
