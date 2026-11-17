@@ -98,13 +98,18 @@ def obtener_datos_comparativo(mes=None, anio=None, fecha_desde=None, fecha_hasta
         if not 1 <= mes <= 12:
             mes = hoy.month
 
-    cursos = list(
-        Alumno.objects.filter(activo=True)
-        .exclude(curso="")
-        .values_list("curso", flat=True)
-        .distinct()
+    # Se usa set() en vez de .distinct(): el Meta.ordering de Alumno incluye
+    # "apellido" y "nombre", y Django los agrega al SELECT DISTINCT, por lo que
+    # devolvería una fila por alumno en lugar de una por curso e inflaría todos
+    # los totales del comparativo.
+    cursos = sorted(
+        set(
+            Alumno.objects.filter(activo=True)
+            .exclude(curso="")
+            .values_list("curso", flat=True)
+        ),
+        key=lambda c: (CURSO_ORDER.get(c, 999), c),
     )
-    cursos.sort(key=lambda c: (CURSO_ORDER.get(c, 999), c))
 
     q_atrasos = Atraso.objects.filter(alumno__curso__in=cursos, alumno__activo=True).exclude(motivo="CAMPO")
     q_uniformes = ControlUniforme.objects.filter(alumno__curso__in=cursos, alumno__activo=True)
